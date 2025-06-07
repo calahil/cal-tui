@@ -1,100 +1,120 @@
-# Bash Cal-TUI Library
+# Cal TUI Library
 
-A lightweight, colorized, interactive TUI (Text-based User Interface) library for Bash scripts. Perfect for creating user-friendly CLI menus, input prompts, progress bars, and confirmations.
+A minimal reusable Text-based User Interface (TUI) toolkit for Bash scripting. Build beautiful CLI interfaces with color, menus, input validation, progress bars, and confirmations.
+
+## Features
+
+- ✅ Colorized text output (info, success, error)
+- 🔄 Dynamic, argument-driven menu system
+- 🟩 Relative progress bar
+- 📝 Input with required/regex validation
+- ❓ Yes/No confirmation prompt
+- 📦 MIT licensed and portable
+- 🚨 ShellCheck CI linting
+- 🌐 Installable via `curl`
 
 ---
 
-## ✨ Features
+## Getting Started
 
-* ✅ Colorized output (info, success, error, headers)
-* 📋 Dynamic main menu system
-* ⌨️ Input prompts with validation
-* 🟩 Progress bar based on percentage steps
-* ❓ Yes/No confirmation dialogs
-
----
-
-## 🛠 Installation
-
+### 🔧 Quick Install
 ```bash
-curl -O https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh
-chmod +x cal-tui.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/install.sh)"
+source ~/.cal-tui/cal-tui.sh
 ```
 
-Then source it in your scripts:
-
+Or manually:
 ```bash
-source ./cal-tui.sh
+curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh -o ~/.cal-tui/cal-tui.sh
+source ~/.cal-tui/cal-tui.sh
+```
+
+### 📁 File Structure
+```
+cal-tui/
+├── cal-tui.sh                    # The TUI library
+├── example.sh                # Demo script
+├── install.sh                # Curl-installable setup
+├── .github/workflows/        # ShellCheck GitHub Actions CI
+│   └── shellcheck.yml
+├── README.md                 # Docs (this file)
+└── LICENSE                   # MIT License
 ```
 
 ---
 
 ## 🧪 Example Usage
 
-### Menu:
-
+### Menu
 ```bash
 source ./cal-tui.sh
 
-say_hello() {
-    name=$(cal-tui::input_prompt "Enter your name:" true)
-    cal-tui::print_success "Hello, $name!"
-}
-
-ask_delete() {
-    if cal-tui::confirm_prompt "Delete all files?" "n"; then
-        cal-tui::print_info "Files deleted."
-    else
-        cal-tui::print_info "Aborted."
-    fi
+my_func() {
+  cal-tui::print_info "This is a menu option."
 }
 
 cal-tui::main_menu "Main Menu" \
-    "Say Hello" "say_hello" \
-    "Delete Prompt" "ask_delete"
+  "Do something" "my_func" \
+  "Quit" "exit"
 ```
 
-### Progress Bar:
+### Input With Validation
+```bash
+name=$(cal-tui::input_prompt "Enter your name:" true '^[A-Za-z]+$' "Letters only!")
+```
 
+### Progress Bar
 ```bash
 for i in {1..10}; do
-    sleep 0.2
-    cal-tui::progress_bar "$i" 10
+  sleep 0.1
+  cal-tui::progress_bar $i 10
 done
 ```
 
-### Input with Validation:
-
+### Confirmation Prompt
 ```bash
-age=$(cal-tui::input_prompt "Enter your age:" true '^[0-9]+$' "Must be a number.")
-echo "You are $age years old."
+if cal-tui::confirm_prompt "Continue with installation?" "n"; then
+  cal-tui::print_success "Proceeding."
+else
+  cal-tui::print_info "Canceled."
+fi
 ```
 
 ---
 
-## 📄 License
+## ✅ Continuous Integration
 
-MIT License. See [LICENSE](./LICENSE) for details.
+Every commit and pull request runs ShellCheck:
+- Ensures syntax correctness
+- Enforces clean Bash scripting practices
 
----
-
-## 💡 Contributing
-
-Pull requests and improvements welcome!
-
-1. Fork the repo
-2. Make your changes
-3. Submit a PR
+```yaml
+.github/workflows/shellcheck.yml
+```
 
 ---
 
-## 📦 Roadmap
-
-* [ ] Arrow-key navigation menus
+## 🚀 License
+MIT License. See `LICENSE` file for full text.
 
 ---
 
-## 🤝 Acknowledgements
+## 🔗 Contributing / Roadmap
+- [x] Colorized output
+- [x] Progress bar
+- [x] Input validation
+- [x] Yes/No prompt
+- [x] Dynamic menu
+- [x] Install via curl
+- [x] ShellCheck GitHub Actions CI
+- [ ] Arrow-key menu selection
+- [ ] Multi-field form input
+- [ ] Popup/dialog UI
+- [ ] Animated spinners
 
-Made with ❤️ for Bash lovers and sysadmins everywhere.
+Fork, PR, or open an issue to suggest features or improvements.
+
+---
+
+Made with ❤️ in Bash.
 
