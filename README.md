@@ -32,7 +32,7 @@ source ~/.cal-tui/cal-tui.sh
 ### 📁 File Structure
 ```
 cal-tui/
-├── cal-tui.sh                    # The TUI library
+├── cal-tui.sh                # The TUI library
 ├── example.sh                # Demo script
 ├── install.sh                # Curl-installable setup
 ├── .github/workflows/        # ShellCheck GitHub Actions CI

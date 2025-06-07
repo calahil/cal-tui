@@ -10,5 +10,5 @@ jobs:
       - name: Install ShellCheck
         run: sudo apt-get install -y shellcheck
       - name: Run ShellCheck
-        run: shellcheck tui.sh example.sh
+        run: shellcheck cal-tui.sh example.sh
 
