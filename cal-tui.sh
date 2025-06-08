@@ -6,16 +6,16 @@
 ### COLOR DEFINITIONS ###
 RESET="\033[0m"
 BOLD="\033[1m"
-UNDERLINE="\033[4m"
+# UNDERLINE="\033[4m"
 
 # Foreground colors
 RED="\033[31m"
 GREEN="\033[32m"
-YELLOW="\033[33m"
+# YELLOW="\033[33m"
 BLUE="\033[34m"
-MAGENTA="\033[35m"
+# MAGENTA="\033[35m"
 CYAN="\033[36m"
-WHITE="\033[37m"
+# WHITE="\033[37m"
 
 ### GENERAL UTILITY FUNCTIONS ###
 cal-tui::clear_screen() {
@@ -49,8 +49,10 @@ cal-tui::progress_bar() {
     local filled=$(( width * current / total ))
     local empty=$(( width - filled ))
 
-    local bar=$(printf "%${filled}s" | tr ' ' '█')
-    local space=$(printf "%${empty}s")
+    local bar
+    bar=$(printf "%${filled}s" | tr ' ' '█')
+    local space
+    space=$(printf "%${empty}s")
 
     printf "\r[%s%s] %d%%" "$bar" "$space" "$percent"
     if [[ "$current" -eq "$total" ]]; then
@@ -92,7 +94,7 @@ cal-tui::main_menu() {
             fi
             eval "${commands[$((choice-1))]}"
             echo -e "\nPress Enter to return to menu..."
-            read
+            read -r
         else
             cal-tui::print_error "Invalid choice. Try again."
             sleep 1
