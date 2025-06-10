@@ -146,7 +146,8 @@ cal-tui::main_menu_return_index() {
         local max_len=0
         for line in "${menu_lines[@]}"; do
             # Remove ANSI escape codes before counting length
-            local stripped=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+            local stripped
+            stripped=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
             local len=${#stripped}
             (( len > max_len )) && max_len=$len
         done
@@ -160,7 +161,7 @@ cal-tui::main_menu_return_index() {
 
         # Print each line at the same horizontal offset
         for line in "${menu_lines[@]}"; do
-            printf "%*s%s\n" "$start_col" "" "$line"
+           printf "%*s%s\n" "$start_col" "" "$line"
         done
 
         # Input prompt aligned to the same column
@@ -171,7 +172,8 @@ cal-tui::main_menu_return_index() {
             if [[ "$choice" -eq 0 ]]; then
                 return 1
             fi
-            RETURNED_INDEX=$((choice - 1))
+            # shellcheck disable=SC2034
+            RETURNED_INDEX=$((choice - 1)) # Used externally as the choice result
             return 0
         else
             cal-tui::print_error "Invalid choice. Try again."
