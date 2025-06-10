@@ -1,0 +1,38 @@
+---
+name: CI
+'on':
+  push:
+    paths:
+      - '**.sh'
+      - '**.yml'
+      - '**.yaml'
+      - '**.c'
+      - '**.h'
+      - '**Makefile'
+      - '**.csproj'
+      - '**.sln'
+  pull_request: {}
+  workflow_dispatch: {}
+jobs:
+ shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        env:
+          SHELLCHECK_OPTS: -x
+        with:
+          check_together: true
+        continue-on-error: true
+ yamllint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yamllint
+        run: sudo apt-get install yamllint -y
+      - name: Lint YAML files
+        run: yamllint .
