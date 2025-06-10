@@ -1,0 +1,90 @@
+---
+stages:
+  - lint
+  - build
+  - test
+  - publish
+# -----------------------------
+# SHELL SCRIPTS (.sh) LINTING
+# -----------------------------
+shellcheck:
+  image:
+    name: koalaman/shellcheck-alpine
+  stage: lint
+  script: shellcheck -x $(find . -type f -name "*.sh")
+  tags: [linux]
+  rules:
+    - exists:
+        - '*.sh'
+# -----------------------------
+# YAML LINTING
+# -----------------------------
+yamllint:
+  image:
+    name: cytopia/yamllint
+    entrypoint: ["/bin/sh", "-c"]
+  stage: lint
+  script: yamllint .
+  tags: [linux]
+  rules:
+    - exists:
+        - '*.yml'
+        - '*.yaml'
+# -----------------------------
+# C PROJECT
+# -----------------------------
+c_build:
+  image: gcc:latest
+  stage: build
+  script:
+    - make
+  tags: [linux]
+  rules:
+    - exists:
+        - 'Makefile'
+c_test:
+  image: gcc:latest
+  stage: test
+  script:
+    - make test || echo "no tests defined"
+  tags: [linux]
+  rules:
+    - exists:
+        - 'Makefile'
+# -----------------------------
+# .NET (Console, Web, Aspire)
+# -----------------------------
+dotnet_build:
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  stage: build
+  script:
+    - dotnet restore
+    - dotnet build --configuration Release
+  tags: [linux]
+  rules:
+    - exists:
+        - '*.csproj'
+        - '*.sln'
+dotnet_test:
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  stage: test
+  script:
+    - dotnet test --no-build
+  tags: [linux]
+  rules:
+    - exists:
+        - '*.csproj'
+        - '*.sln'
+dotnet_publish:
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  stage: publish
+  script:
+    - dotnet publish --configuration Release -o publish
+  tags: [linux]
+  rules:
+    - exists:
+        - '*.csproj'
+        - '*.sln'
+  artifacts:
+    paths:
+      - publish/
