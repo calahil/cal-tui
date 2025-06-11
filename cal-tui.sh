@@ -126,6 +126,7 @@ cal-tui::main_menu() {
                 echo -e "\nPress Enter to return to menu..."
                 read -r
             )
+            cal-tui::clear_screen
         else
             cal-tui::print_error "Invalid choice. Try again."
             sleep 1
