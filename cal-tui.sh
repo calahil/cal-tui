@@ -121,12 +121,9 @@ cal-tui::main_menu() {
                 echo "Goodbye!"
                 exit 0
             fi
-            (
-                eval "${commands[$((choice - 1))]}"
-                echo -e "\nPress Enter to return to menu..."
-                read -r
-            )
-            cal-tui::clear_screen
+            eval "${commands[$((choice - 1))]}"
+            echo -e "\nPress Enter to return to menu..."
+            read -r
         else
             cal-tui::print_error "Invalid choice. Try again."
             sleep 1
