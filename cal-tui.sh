@@ -19,7 +19,7 @@ CYAN="\033[36m"
 
 ### GENERAL UTILITY FUNCTIONS ###
 cal-tui::clear_screen() {
-    printf "\033[2J\033[H"
+    tput reset
 }
 
 cal-tui::print_header() {
