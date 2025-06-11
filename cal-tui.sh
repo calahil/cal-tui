@@ -62,6 +62,7 @@ cal-tui::progress_bar() {
 
 ### DYNAMIC MENU THAT RUNS COMMANDS ###
 # Usage: cal-tui::main_menu "Title" "Option 1" "cmd1" "Option 2" "cmd2" ...
+
 cal-tui::main_menu() {
     local title="$1"
     shift
@@ -75,38 +76,52 @@ cal-tui::main_menu() {
         shift
     done
 
+    local rows cols
+    rows=$(tput lines)
+    cols=$(tput cols)
+
     while true; do
         cal-tui::clear_screen
-        local term_width
-        term_width=$(tput cols)
 
-        # Centered header
-        local header_line
-        header_line="$(echo -e "${BOLD}${CYAN}${title}${RESET}")"
-        local header_padding=$(( (term_width - ${#title}) / 2 ))
-        printf "%*s%s\n\n" "$header_padding" "" "$header_line"
+        # Build the full menu content
+        local -a menu_lines
+        menu_lines+=("$(echo -e "${BOLD}${CYAN}${title}${RESET}")")
+        menu_lines+=("")
+        for i in "${!options[@]}"; do
+            menu_lines+=("  $((i+1))) ${options[i]}")
+        done
+        menu_lines+=("  0) Exit")
+        menu_lines+=("")
 
-        # Print each menu option centered
-        for index in "${!options[@]}"; do
-            local opt_line="  $((index+1))) ${options[index]}"
-            local padding=$(( (term_width - ${#opt_line}) / 2 ))
-            printf "%*s%s\n" "$padding" "" "$opt_line"
+        # Compute max visible width (excluding ANSI codes)
+        local max_len=0
+        for line in "${menu_lines[@]}"; do
+            local stripped
+            stripped=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+            (( ${#stripped} > max_len )) && max_len=${#stripped}
         done
 
-        # Print Exit option centered
-        local exit_line="  0) Exit"
-        local exit_padding=$(( (term_width - ${#exit_line}) / 2 ))
-        printf "\n%*s%s\n\n" "$exit_padding" "" "$exit_line"
+        local start_col=$(( (cols - max_len) / 2 ))
+        local start_row=$(( (rows - ${#menu_lines[@]}) / 2 ))
 
-        # Prompt input (not centered for clarity)
-        read -rp "Choose an option: " choice
+        # Add vertical padding
+        for ((i = 0; i < start_row; i++)); do echo; done
+
+        # Print the menu block
+        for line in "${menu_lines[@]}"; do
+            printf "%*s%s\n" "$start_col" "" "$line"
+        done
+
+        # Input prompt aligned to the menu block
+        echo
+        read -rp "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" choice
 
         if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 0 && choice <= ${#options[@]} )); then
             if [[ "$choice" -eq 0 ]]; then
                 echo "Goodbye!"
                 exit 0
             fi
-            eval "${commands[$((choice-1))]}"
+            eval "${commands[$((choice - 1))]}"
             echo -e "\nPress Enter to return to menu..."
             read -r
         else
@@ -172,8 +187,7 @@ cal-tui::main_menu_return_index() {
             if [[ "$choice" -eq 0 ]]; then
                 return 1
             fi
-            # shellcheck disable=SC2034
-            RETURNED_INDEX=$((choice - 1)) # Used externally as the choice result
+            RETURNED_INDEX=$((choice - 1))
             return 0
         else
             cal-tui::print_error "Invalid choice. Try again."
