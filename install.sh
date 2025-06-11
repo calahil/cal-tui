@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh - Install cal-tui.sh to ~/.cal-tui or custom location
+# install.sh - Install cal-tui.sh to /usr/local/bin or custom location
 # Usage:
 #   bash -c "$(curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/install.sh)"
 #   OR
@@ -7,7 +7,7 @@
 
 set -e
 
-DEST=${1:-"$HOME/.cal-tui"}
+DEST=${1:-"/usr/local/bin"}
 TUI_URL="https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh"
 
 mkdir -p "$DEST"

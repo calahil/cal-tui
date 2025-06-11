@@ -133,7 +133,7 @@ cal-tui::main_menu() {
 }
 
 # DYNAMIC MENU THAT RETURNS INDEX OF SELECTED OPTION
-# Usage: index=$(cal-tui::main_menu_return_index "Title" OPTIONS)
+# Usage: index=$(cal-tui::main_menu_return_index "Title" OPTIONS "callback_function")
 cal-tui::main_menu_return_index() {
     local title="$1"
     shift
