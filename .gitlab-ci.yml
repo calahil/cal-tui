@@ -26,7 +26,7 @@ yamllint:
     - echo "Finding non-GitHub YAML files..."
     - YAML_FILES=$(find . -type f \( -name '*.yml' -o -name '*.yaml' \) ! -path './.github/workflows/*')
     - if [ -n "$YAML_FILES" ]; then
-        echo "$YAML_FILES" | xargs yamllint -c /etc/yamllint/config.yaml;
+        echo "$YAML_FILES" | yamllint -s $YAML_FILES
       else
         echo "No relevant YAML files to lint.";
       fi  
