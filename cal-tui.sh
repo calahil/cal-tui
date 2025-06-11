@@ -84,7 +84,7 @@ cal-tui::main_menu() {
         cal-tui::clear_screen
 
         # Build the full menu content
-        local -a menu_lines
+        menu_lines=()
         menu_lines+=("$(echo -e "${BOLD}${CYAN}${title}${RESET}")")
         menu_lines+=("")
         for i in "${!options[@]}"; do
@@ -121,6 +121,7 @@ cal-tui::main_menu() {
                 echo "Goodbye!"
                 exit 0
             fi
+            cal-tui::clear_screen
             eval "${commands[$((choice - 1))]}"
             echo -e "\nPress Enter to return to menu..."
             read -r
@@ -148,7 +149,7 @@ cal-tui::main_menu_return_index() {
         cal-tui::clear_screen
 
         # Prepare menu lines (without printing yet)
-        local -a menu_lines
+        menu_lines=()
         menu_lines+=("$(echo -e "${BOLD}${CYAN}${title}${RESET}")")
         menu_lines+=("")
         for i in "${!opts[@]}"; do
