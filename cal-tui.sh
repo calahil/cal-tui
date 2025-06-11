@@ -188,6 +188,7 @@ cal-tui::main_menu_return_index() {
             if [[ "$choice" -eq 0 ]]; then
                 return 1
             fi
+            # shellcheck disable=SC2034
             RETURNED_INDEX=$((choice - 1))
             return 0
         else
