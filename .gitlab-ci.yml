@@ -19,20 +19,40 @@ shellcheck:
 # -----------------------------
 # YAML LINTING
 # -----------------------------
-yaml-lint:
-  image: github/super-linter:v5
-  variables:
-    RUN_LOCAL: "true"
-    VALIDATE_YAML: "true"
+yamllint:
+  stage: lint
+  image: cytopia/yamllint:latest
   script:
-    - export GITHUB_WORKSPACE=/tmp/lint
-    - mkdir -p /tmp/lint
-    - cp -r . /tmp/lint
-    - /action/lib/linter.sh
+    - echo "Finding non-GitHub YAML files..."
+    - YAML_FILES=$(find . -type f \( -name '*.yml' -o -name '*.yaml' \) ! -path './.github/workflows/*')
+    - if [ -n "$YAML_FILES" ]; then
+        echo "$YAML_FILES" | xargs yamllint -c /etc/yamllint/config.yaml;
+      else
+        echo "No relevant YAML files to lint.";
+      fi  
   only:
     changes:
       - "**/*.yml"
       - "**/*.yaml"
+  except:
+    changes:
+      - .github/workflows/*
+# -----------------------------
+# GITHUB ACTIONS YAML 
+# -----------------------------
+actionlint:
+  stage: lint
+  image: golang:1.21
+  before_script:
+    - go install github.com/rhysd/actionlint/cmd/actionlint@latest
+    - export PATH="$PATH:$(go env GOPATH)/bin"
+  script:
+    - echo "Running actionlint on GitHub Actions workflow files..."
+    - actionlint
+  only:
+    changes:
+      - .github/workflows/*.yml
+
 # -----------------------------
 # C PROJECT
 # -----------------------------
