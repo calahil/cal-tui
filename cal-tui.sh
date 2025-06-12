@@ -6,6 +6,7 @@
 ### COLOR DEFINITIONS ###
 RESET="\033[0m"
 BOLD="\033[1m"
+REVERSE="\033[7m"
 # UNDERLINE="\033[4m"
 
 # Foreground colors
@@ -60,9 +61,95 @@ cal-tui::progress_bar() {
     fi
 }
 
+cal-tui::main_menu_navigation() {
+    local title="$1"
+    shift
+    local -a options=()
+    local -a commands=()
+
+    while [[ $# -gt 0 ]]; do
+        options+=("$1")
+        shift
+        commands+=("$1")
+        shift
+    done
+
+    local selected=0
+    local rows cols
+
+    while true; do
+        cal-tui::clear_screen
+        rows=$(tput lines)
+        cols=$(tput cols)
+
+        # Build menu lines
+        local -a menu_lines
+        menu_lines+=("$(echo -e "${BOLD}${CYAN}${title}${RESET}")")
+        menu_lines+=("")
+
+        for i in "${!options[@]}"; do
+            if [[ $i -eq $selected ]]; then
+                menu_lines+=("$(echo -e "  ${REVERSE}$((i+1))) ${options[i]}${RESET}")")
+            else
+                menu_lines+=("  $((i+1))) ${options[i]}")
+            fi
+        done
+
+        if [[ $selected -eq ${#options[@]} ]]; then
+            menu_lines+=("$(echo -e "  ${REVERSE}0) Exit${RESET}")")
+        else
+            menu_lines+=("  0) Exit")
+        fi
+
+        menu_lines+=("")
+
+        # Compute max width (remove ANSI codes for padding calc)
+        local max_len=0
+        for line in "${menu_lines[@]}"; do
+            local clean=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+            (( ${#clean} > max_len )) && max_len=${#clean}
+        done
+
+        local start_col=$(( (cols - max_len) / 2 ))
+        local start_row=$(( (rows - ${#menu_lines[@]}) / 2 ))
+
+        # Print with vertical padding
+        for ((i = 0; i < start_row; i++)); do echo; done
+        for line in "${menu_lines[@]}"; do
+            printf "%*s%s\n" "$start_col" "" "$line"
+        done
+
+        # Read key
+        IFS= read -rsn1 key
+        if [[ $key == $'\x1b' ]]; then
+            read -rsn2 -t 0.1 rest
+            case "$rest" in
+                "[A") ((selected--)) ;; # Up arrow
+                "[B") ((selected++)) ;; # Down arrow
+            esac
+        elif [[ $key == "k" ]]; then
+            ((selected--))
+        elif [[ $key == "j" ]]; then
+            ((selected++))
+        elif [[ $key == "" ]]; then
+            if (( selected == ${#options[@]} )); then
+                echo "Goodbye!"
+                exit 0
+            fi
+            cal-tui::clear_screen
+            eval "${commands[$selected]}"
+            echo -e "\nPress Enter to return to menu..."
+            read -r
+        fi
+
+        # Clamp selected between 0 and option count
+        if (( selected < 0 )); then selected=${#options[@]}; fi
+        if (( selected > ${#options[@]} )); then selected=0; fi
+    done
+}
+
 ### DYNAMIC MENU THAT RUNS COMMANDS ###
 # Usage: cal-tui::main_menu "Title" "Option 1" "cmd1" "Option 2" "cmd2" ...
-
 cal-tui::main_menu() {
     local title="$1"
     shift

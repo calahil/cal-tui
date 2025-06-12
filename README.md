@@ -9,8 +9,6 @@ A minimal reusable Text-based User Interface (TUI) toolkit for Bash scripting. B
 - 🟩 Relative progress bar
 - 📝 Input with required/regex validation
 - ❓ Yes/No confirmation prompt
-- 📦 MIT licensed and portable
-- 🚨 ShellCheck CI linting
 - 🌐 Installable via `curl`
 
 ---
@@ -20,13 +18,13 @@ A minimal reusable Text-based User Interface (TUI) toolkit for Bash scripting. B
 ### 🔧 Quick Install
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/install.sh)"
-source ~/.cal-tui/cal-tui.sh
+source /usr/local/bin/cal-tui.sh
 ```
 
 Or manually:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh -o ~/.cal-tui/cal-tui.sh
-source ~/.cal-tui/cal-tui.sh
+curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh -o /usr/local/bin/cal-tui.sh
+source /usr/local/bin/cal-tui.sh
 ```
 
 ### 📁 File Structure
@@ -35,8 +33,9 @@ cal-tui/
 ├── cal-tui.sh                # The TUI library
 ├── example.sh                # Demo script
 ├── install.sh                # Curl-installable setup
-├── .github/workflows/        # ShellCheck GitHub Actions CI
-│   └── shellcheck.yml
+├── .gitlab-ci.yml            # GitLab CI runner
+├── .github/workflows/        # GitHub Actions CI
+│   └── main.yml
 ├── README.md                 # Docs (this file)
 └── LICENSE                   # MIT License
 ```
@@ -82,18 +81,6 @@ fi
 
 ---
 
-## ✅ Continuous Integration
-
-Every commit and pull request runs ShellCheck:
-- Ensures syntax correctness
-- Enforces clean Bash scripting practices
-
-```yaml
-.github/workflows/shellcheck.yml
-```
-
----
-
 ## 🚀 License
 MIT License. See `LICENSE` file for full text.
 
@@ -106,7 +93,6 @@ MIT License. See `LICENSE` file for full text.
 - [x] Yes/No prompt
 - [x] Dynamic menu
 - [x] Install via curl
-- [x] ShellCheck GitHub Actions CI
 - [ ] Arrow-key menu selection
 - [ ] Multi-field form input
 - [ ] Popup/dialog UI
