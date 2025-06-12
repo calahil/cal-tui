@@ -33,7 +33,7 @@ cal-tui/
 ├── cal-tui.sh                # The TUI library
 ├── example.sh                # Demo script
 ├── install.sh                # Curl-installable setup
-├── .gitlab-ci.yml            # GitLab CI runner
+├── .gitlab-ci.yml            # GitLab CI runners
 ├── .github/workflows/        # GitHub Actions CI
 │   └── main.yml
 ├── README.md                 # Docs (this file)
