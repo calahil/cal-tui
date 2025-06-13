@@ -106,7 +106,8 @@ cal-tui::main_menu_navigation() {
         # Compute max width (remove ANSI codes for padding calc)
         local max_len=0
         for line in "${menu_lines[@]}"; do
-            local clean=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+            local clean
+            clean=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
             (( ${#clean} > max_len )) && max_len=${#clean}
         done
 
