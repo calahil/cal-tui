@@ -133,13 +133,14 @@ cal-tui::main_menu_navigation() {
             ((selected++))
         elif [[ $key == "" ]]; then
             if (( selected == ${#options[@]} )); then
+                cal-tui::clear_screen
                 echo "Goodbye!"
                 exit 0
             fi
             cal-tui::clear_screen
             eval "${commands[$selected]}"
-            echo -e "\nPress Enter to return to menu..."
-            read -r
+            #echo -e "\nPress Enter to return to menu..."
+            #read -r
         fi
 
         # Clamp selected between 0 and option count
@@ -205,13 +206,14 @@ cal-tui::main_menu() {
 
         if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 0 && choice <= ${#options[@]} )); then
             if [[ "$choice" -eq 0 ]]; then
+                cal-tui::clear_screen
                 echo "Goodbye!"
                 exit 0
             fi
             cal-tui::clear_screen
             eval "${commands[$((choice - 1))]}"
-            echo -e "\nPress Enter to return to menu..."
-            read -r
+            #echo -e "\nPress Enter to return to menu..."
+            #read -r
         else
             cal-tui::print_error "Invalid choice. Try again."
             sleep 1
