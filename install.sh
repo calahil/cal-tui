@@ -7,7 +7,7 @@
 
 set -e
 
-DEST=${1:-"/usr/local/bin"}
+DEST=${1:-"$HOME/.local/bin"}
 TUI_URL="https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh"
 
 mkdir -p "$DEST"
