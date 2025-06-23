@@ -31,139 +31,60 @@ has_emoji_support() {
     [[ "$TERM" != "dumb" ]] && [[ -n "$DISPLAY" || -n "$WAYLAND_DISPLAY" || -n "$SSH_TTY" ]]
 }
 
-if [ "$ICON_OVERRIDE" = "emoji" ]; then
-    SUCCESS_ICON="✅"
-    ERROR_ICON="🚫"
-    INFO_ICON="⚠️"
-    SKIP_ICON="⏭️"
-    COPY_ICON="📄"
-    EXECUTE_ICON="⚙️"
-    FOLDER_ICON="📁"
-    TOOLS_ICON="🛠️"
-    UPDATE_ICON="🔍"
-    PACKAGE_ICON="📦"
-    WORLD_ICON="🌎"
-    SPACESHIP_ICON="🚀"
-    COMPUTER_ICON="💻"
-    SERVER_ICON="🔌"
-    CLEAN_ICON="🧹"
-    LOCK_ICON="🔒"
-    BASHPROMPT_ICON="#️⃣ "
-    SYMLINK_ICON="🔗"
-    BITWARDEN_ICON="🛡️"
-    INSTALL_ICON="📥"
-    REPO_ICON="📚"
-    VSCODE_ICON="⚛️"
-    GHOSTTY_ICON="👻"
-    NEOVIM_ICON="🇳"
-    DEVKIT_ICON="🧰"
-    GNOME_ICON="👣"
-    DEPENDS_ICON="👨‍👨‍👦‍👦"
-    GIT_ICON="🗂️"
-    GITBRANCH_ICON="🪵"
-    GITCOMMIT_ICON="📝"
-    GITPUSH_ICON="🔄"
-    GITHUB_ICON="😺"
-    GITLAB_ICON="🦊" 
-    GITEA_ICON="🫖"
-    C_ICON="🇨"
-    CSHARP_ICON="©️"
-    DOCKER_ICON="⛴️"
-    PYTHON_ICON="𓆙 "
-    TYPESCRIPT_ICON="🇹"
-    ADD_ICON="➕"
-    BACK_ICON="↩️"
-    EXIT_ICON="🚪"
-    HEADER_ICON="*️⃣ "
-elif [ "$ICON_OVERRIDE" = "nerd" ]; then
-    SUCCESS_ICON="󰸞 "
-    ERROR_ICON=" "
-    INFO_ICON=" "
-    SKIP_ICON="󰒭 "
-    COPY_ICON=" "
-    EXECUTE_ICON=" "
-    FOLDER_ICON=" "
-    TOOLS_ICON="󱁤 "
-    UPDATE_ICON=" "
-    PACKAGE_ICON=" "
-    WORLD_ICON=" "
-    SPACESHIP_ICON=" "
-    COMPUTER_ICON="󰟀 "
-    SERVER_ICON="󰒍 "
-    CLEAN_ICON="󰃢 "
-    LOCK_ICON=" "
-    BASHPROMPT_ICON=" "
-    SYMLINK_ICON=" "
-    BITWARDEN_ICON=" "
-    INSTALL_ICON=" "
-    REPO_ICON=" "
-    VSCODE_ICON=" "
-    GHOSTTY_ICON="󰊠 "
-    NEOVIM_ICON=" "
-    DEVKIT_ICON=" "
-    GNOME_ICON=" "
-    DEPENDS_ICON=" "
-    GIT_ICON=" "
-    GITBRANCH_ICON=" "
-    GITCOMMIT_ICON=" "
-    GITPUSH_ICON=" "
-    GITHUB_ICON=" "
-    GITLAB_ICON=" "
-    GITEA_ICON=" "
-    C_ICON=" "
-    CSHARP_ICON="󰌛 "
-    DOCKER_ICON="󰡨 "
-    PYTHON_ICON=" "
-    TYPESCRIPT_ICON=" "
-    ADD_ICON=" "
-    BACK_ICON="󰌑 "
-    EXIT_ICON="󰈆 "
-    HEADER_ICON="󰎃 "
-else
-    SUCCESS_ICON="SUCCESS"
-    ERROR_ICON="ERROR"
-    INFO_ICON="INFO"
-    SKIP_ICON="SKIP"
-    COPY_ICON="FILE"
-    EXECUTE_ICON="SETTING"
-    FOLDER_ICON="FOLDER"
-    TOOLS_ICON="TOOLS"
-    UPDATE_ICON="UPDATE"
-    PACKAGE_ICON="PACKAGE"
-    WORLD_ICON="WORLD"
-    SPACESHIP_ICON="SPACESHIP"
-    COMPUTER_ICON="COMPUTER"
-    SERVER_ICON="SERVER"
-    CLEAN_ICON="CLEAN"
-    LOCK_ICON="LOCK"
-    BASHPROMT_ICON="#!"
-    SYMLINK_ICON="SYMLINK"
-    BITWARDEN_ICON="BITWARDEN"
-    INSTALL_ICON="INSTALL"
-    REPO_ICON="REPO"
-    VCODE_ICON="VSCODE"
-    GHOSTTY_ICON="GHOSTTY"
-    NEOVIM_ICON="NEOVIM"
-    DEVKIT_ICON="DEVKIT"
-    GNOME_ICON="GNOME"
-    DEPENDS_ICON="DEPENDENCIES"
-    GIT_ICON="GIT"
-    GITBRANCH_ICON="BRANCH"
-    GITCOMMIT_ICON="COMMIT"
-    GITPUSH_ICON="PUSH"
-    GITHUB_ICON="GITHUB"
-    GITLAB_ICON="GITLAB"
-    GITEA_ICON="GITEA"
-    C_ICON="[C ]"
-    CSHARP_ICON="[C#]"
-    DOCKER_ICON="[DO]"
-    PYTHON_ICON="[PY]"
-    TYPESCRIPT_ICON="[TS]"
-    ADD_ICON="[+]"
-    BACK_ICON="<-"
-    EXIT_ICON="[>]"
-    HEADER_ICON="[*]"
-fi
+declare -A ICON_MAP
+
+cal-tui::init_icons() {
+    local mode="${1:-$ICON_OVERRIDE}"
+
+    if [[ $mode == "emoji" ]]; then
+        ICON_MAP=(
+            [SUCCESS]="✅" [ERROR]="🚫" [INFO]="⚠️" [SKIP]="⏭️"
+            [COPY]="📄" [EXECUTE]="⚙️" [FOLDER]="📁" [TOOLS]="🛠️"
+            [UPDATE]="🔍" [PACKAGE]="📦" [WORLD]="🌎" [SPACESHIP]="🚀"
+            [COMPUTER]="💻" [SERVER]="🔌" [CLEAN]="🧹" [LOCK]="🔒"
+            [BASHPROMPT]="#️⃣ " [SYMLINK]="🔗" [BITWARDEN]="🛡️"
+            [INSTALL]="📥" [REPO]="📚" [VSCODE]="⚛️" [GHOSTTY]="👻"
+            [NEOVIM]="🇳" [DEVKIT]="🧰" [GNOME]="👣" [DEPENDS]="👨‍👨‍👦‍👦"
+            [GIT]="🗂️" [GITBRANCH]="🪵" [GITCOMMIT]="📝" [GITPUSH]="🔄"
+            [GITHUB]="😺" [GITLAB]="🦊" [GITEA]="🫖" [C]="🇨"
+            [CSHARP]="©️" [DOCKER]="⛴️" [PYTHON]="𓆙" [TYPESCRIPT]="🇹"
+            [ADD]="➕" [BACK]="↩️" [EXIT]="🚪" [HEADER]="*️⃣ "
+        )
+    elif [[ $mode == "nerd" ]]; then
+        ICON_MAP=(
+            [SUCCESS]="󰸞 " [ERROR]=" " [INFO]=" " [SKIP]="󰒭 "
+            [COPY]=" " [EXECUTE]=" " [FOLDER]=" " [TOOLS]="󱁤 "
+            [UPDATE]=" " [PACKAGE]=" " [WORLD]=" " [SPACESHIP]=" "
+            [COMPUTER]="󰟀 " [SERVER]="󰒍 " [CLEAN]="󰃢 " [LOCK]=" "
+            [BASHPROMPT]=" " [SYMLINK]=" " [BITWARDEN]=" "
+            [INSTALL]=" " [REPO]=" " [VSCODE]=" " [GHOSTTY]="󰊠 "
+            [NEOVIM]=" " [DEVKIT]=" " [GNOME]=" " [DEPENDS]=" "
+            [GIT]=" " [GITBRANCH]=" " [GITCOMMIT]=" " [GITPUSH]=" "
+            [GITHUB]=" " [GITLAB]=" " [GITEA]=" " [C]=" "
+            [CSHARP]="󰌛 " [DOCKER]="󰡨 " [PYTHON]=" " [TYPESCRIPT]=" "
+            [ADD]=" " [BACK]="󰌑 " [EXIT]="󰈆 " [HEADER]="󰎃 "
+        )
+    else
+        ICON_MAP=(
+            [SUCCESS]="SUCCESS" [ERROR]="ERROR" [INFO]="INFO" [SKIP]="SKIP"
+            [COPY]="FILE" [EXECUTE]="SETTING" [FOLDER]="FLDR" [TOOLS]="TOOLS"
+            [UPDATE]="UPD" [PACKAGE]="PKG" [WORLD]="WRLD" [SPACESHIP]="SHIP"
+            [COMPUTER]="PUTER" [SERVER]="SRV" [CLEAN]="CLEAN" [LOCK]="LOCK"
+            [BASHPROMPT]="#!" [SYMLINK]="SYM" [BITWARDEN]="BIT"
+            [INSTALL]="INSTALL" [REPO]="REPO" [VSCODE]="VSC" [GHOSTTY]="GHOSTTY"
+            [NEOVIM]="NVIM" [DEVKIT]="DEVKIT" [GNOME]="GNOME" [DEPENDS]="DEPEND"
+            [GIT]="GIT" [GITBRANCH]="BRANCH" [GITCOMMIT]="COMMIT" [GITPUSH]="PUSH"
+            [GITHUB]="GITHUB" [GITLAB]="GITLAB" [GITEA]="GITEA" [C]="[C]" 
+            [CSHARP]="[C#]" [DOCKER]="[DO]" [PYTHON]="[PY]" [TYPESCRIPT]="[TS]"
+            [ADD]="[+]" [BACK]="<-" [EXIT]="[>]" [HEADER]="[*]"
+        )
+    fi
+}
+
+cal-tui::get_icon() {
+    local key="$1"
+    echo "${ICON_MAP[$key]:-}"
+}
 
 RETURNED_INDEX=-1
 ### GENERAL UTILITY FUNCTIONS ###
@@ -172,7 +93,7 @@ cal-tui::clear_screen() {
 }
 
 cal-tui::print_header() {
-    echo -e "${BOLD}${CYAN}${HEADER_ICON} $1 ${HEADER_ICON}${RESET}"
+    echo -e "${BOLD}${CYAN}$(cal-tui::get_icon HEADER) $1 $(cal-tui::get_icon HEADER)${RESET}"
 }
 
 cal-tui::print_menu_item() {
@@ -180,11 +101,11 @@ cal-tui::print_menu_item() {
 }
 
 cal-tui::print_info() {
-    echo -e "${BOLD}${YELLOW}[${INFO_ICON}] $1${RESET}"
+    echo -e "${BOLD}${YELLOW}[$(cal-tui::get_icon INFO)] $1${RESET}"
 }
 
 cal-tui::print_error() {
-    echo -e "${BOLD}${RED}[${ERROR_ICON}]${MAGENTA} $1${RESET}"
+    echo -e "${BOLD}${RED}[$(cal-tui::get_icon ERROR)]${MAGENTA} $1${RESET}"
 }
 
 cal-tui::print_log() {
@@ -193,11 +114,11 @@ cal-tui::print_log() {
 }
 
 cal-tui::print_success() {
-    echo -e "${BOLD}${GREEN}[${SUCCESS_ICON}] $*${RESET}"
+    echo -e "${BOLD}${GREEN}[$(cal-tui::get_icon SUCCESS)] $*${RESET}"
 }
 
 cal-tui::print_skip() {
-    echo -e "${BOLD}${BLUE}[${SKIP_ICON}] $*${RESET}"
+    echo -e "${BOLD}${BLUE}[$(cal-tui::get_icon SKIP)] $*${RESET}"
 }
 
 cal-tui::exit() {
@@ -249,7 +170,6 @@ cal-tui::confirm_prompt() {
 
     local response
     while true; do
-        #read -rp "$(echo -e "${CYAN}${prompt} ${default_hint} ${RESET}")" response
         response=$(cal-tui::input_prompt "$prompt $default_hint" true "$regex" "Use $default_hint")
 
         response="${response,,}"
@@ -469,7 +389,7 @@ cal-tui::main_menu() {
 
         if (( choice >= 0 && choice <= ${#options[@]} )); then
             cal-tui::clear_screen
-            eval "${commands[$((choice-1))]}"
+            "${commands[$((choice-1))]}"
         else
             cal-tui::print_error "Invalid choice. Try again."
             sleep 1
