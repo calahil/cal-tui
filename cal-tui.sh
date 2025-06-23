@@ -86,7 +86,6 @@ cal-tui::get_icon() {
     echo "${ICON_MAP[$key]:-}"
 }
 
-RETURNED_INDEX=-1
 ### GENERAL UTILITY FUNCTIONS ###
 cal-tui::clear_screen() {
     tput reset
@@ -252,6 +251,7 @@ cal-tui::progress_bar() {
         fi
     fi
 }
+
 cal-tui::table() {
     local -a lines
     local -a col_widths
@@ -331,22 +331,13 @@ cal-tui::table() {
 }
 
 ### DYNAMIC MENU THAT RUNS COMMANDS ###
-# Usage: cal-tui::main_menu "Title" "Option 1" "icon1" "cmd1" "Option 2" "icon2" "cmd2" ...
-cal-tui::main_menu() {
+# Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS
+cal-tui::menu() {
     local title="$1"
     shift
-    local -a options=()
-    local -a commands=()
-    local -a icons=()
-
-    while [[ $# -gt 0 ]]; do
-        options+=("$1")
-        shift
-        icons+=("$1")
-        shift
-        commands+=("$1")
-        shift
-    done
+    local -n _options=$1
+    local -n _icons=$2
+    local -n _commands=$3
 
     local rows cols
     rows=$(tput lines)
@@ -359,8 +350,8 @@ cal-tui::main_menu() {
         menu_lines=()
         menu_lines+=("$(cal-tui::print_header "$title")")
         menu_lines+=("")
-        for i in "${!options[@]}"; do
-            menu_lines+=("$(cal-tui::print_menu_item "$((i+1))" "${icons[i]}" "${options[i]}")")
+        for i in "${!_options[@]}"; do
+            menu_lines+=("$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")")
         done
         menu_lines+=("")
 
@@ -389,66 +380,7 @@ cal-tui::main_menu() {
 
         if (( choice >= 0 && choice <= ${#options[@]} )); then
             cal-tui::clear_screen
-            "${commands[$((choice-1))]}"
-        else
-            cal-tui::print_error "Invalid choice. Try again."
-            sleep 1
-        fi
-    done
-}
-
-# DYNAMIC MENU THAT RETURNS INDEX OF SELECTED OPTION
-# Usage: index=$(cal-tui::main_menu_return_index "Title" OPTIONS ICONS)
-cal-tui::main_menu_return_index() {
-    local title="$1"
-    shift
-    local -n _options=$1
-    local -n _icons=$2
-    local rows cols
-    rows=$(tput lines)
-    cols=$(tput cols)
-
-    while true; do
-        cal-tui::clear_screen
-
-        # Prepare menu lines (without printing yet)
-        menu_lines=()
-        menu_lines+=("$(cal-tui::print_header "$title")")
-        menu_lines+=("")
-        for i in "${!_options[@]}"; do 
-            menu_lines+=("$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")")
-        done
-        menu_lines+=("")
-
-        # Determine max line width (stripped of color codes for accurate spacing)
-        local max_len=0
-        for line in "${menu_lines[@]}"; do
-            # Remove ANSI escape codes before counting length
-            local stripped
-            stripped=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
-            local len=${#stripped}
-            (( len > max_len )) && max_len=$len
-        done
-
-        # Horizontal start position so everything aligns to same column
-        local start_col=$(( (cols - max_len) / 2 ))
-        local start_row=$(( (rows - ${#menu_lines[@]}) / 2 ))
-
-        # Add vertical padding
-        for ((i = 0; i < start_row; i++)); do echo; done
-
-        # Print each line at the same horizontal offset
-        for line in "${menu_lines[@]}"; do
-           printf "%*s%s\n" "$start_col" "" "$line"
-        done
-
-        # Input prompt aligned to the same column
-        echo
-        choice=$(cal-tui::input_prompt "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" true '^[0-9]+$' "Only digits allowed.")
-        if (( choice >= 0 && choice <= ${#_options[@]} )); then
-            # shellcheck disable=SC2034
-            RETURNED_INDEX=$((choice-1))
-            return
+            "${_commands[$((choice-1))]}"
         else
             cal-tui::print_error "Invalid choice. Try again."
             sleep 1
