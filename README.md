@@ -9,6 +9,7 @@ A minimal reusable Text-based User Interface (TUI) toolkit for Bash scripting. B
 - 🟩 Relative progress bar
 - 📝 Input with required/regex validation
 - ❓ Yes/No confirmation prompt
+- ⚠️ Emoji/Nerd Font/plain text support 
 - 🌐 Installable via `curl`
 
 ---
@@ -18,13 +19,13 @@ A minimal reusable Text-based User Interface (TUI) toolkit for Bash scripting. B
 ### 🔧 Quick Install
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/install.sh)"
-source /usr/local/bin/cal-tui.sh
+source $HOME/.local/bin/cal-tui.sh
 ```
 
 Or manually:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh -o /usr/local/bin/cal-tui.sh
-source /usr/local/bin/cal-tui.sh
+curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/cal-tui.sh -o $HOME/.local/bin/cal-tui.sh
+source $HOME/.local/bin/cal-tui.sh
 ```
 
 ### 📁 File Structure
@@ -46,15 +47,15 @@ cal-tui/
 
 ### Menu
 ```bash
-source ./cal-tui.sh
+source $HOME/.local/bin/cal-tui.sh
 
 my_func() {
   cal-tui::print_info "This is a menu option."
 }
 
 cal-tui::main_menu "Main Menu" \
-  "Do something" "my_func" \
-  "Quit" "exit"
+  "Do something" "icon1" "my_func" \
+  "Quit" "icon2" "exit"
 ```
 
 ### Input With Validation
@@ -93,7 +94,8 @@ MIT License. See `LICENSE` file for full text.
 - [x] Yes/No prompt
 - [x] Dynamic menu
 - [x] Install via curl
-- [ ] Arrow-key menu selection
+- [x] Icon support
+- [ ] Tables
 - [ ] Multi-field form input
 - [ ] Popup/dialog UI
 - [ ] Animated spinners

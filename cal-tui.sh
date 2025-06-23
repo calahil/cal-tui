@@ -261,7 +261,7 @@ cal-tui::confirm_prompt() {
         case "$response" in
             y|yes) return 0 ;;
             n|no) return 1 ;;
-            *) tui::print_error "Please answer yes or no." ;;
+            *) cal-tui::print_error "Please answer yes or no." ;;
         esac
     done
 }
@@ -332,39 +332,35 @@ cal-tui::progress_bar() {
         fi
     fi
 }
-
 cal-tui::table() {
     local -a lines
-    local -A col_widths
-    local border_left border_right border_sep
-    local ICON_MODE="${ICON_OVERRIDE:-text}"
+    local -a col_widths
+    local icon_mode="${ICON_OVERRIDE:-text}"
     local header_shown=false
 
-    # Determine borders based on ICON_OVERRIDE
-    case "$ICON_MODE" in
+    # Define border sets per mode
+    local tl tr bl br h v sep
+    case "$icon_mode" in
         emoji)
-            border_left="🟩"
-            border_right="🟩"
-            border_sep="🟩"
+            tl="🟩"; tr="🟩"; bl="🟩"; br="🟩"
+            h="🟩"; v="🟩"; sep="🟩"
             ;;
         nerd)
-            border_left=""
-            border_right=""
-            border_sep="│"
+            tl="┌"; tr="┐"; bl="└"; br="┘"
+            h="─"; v="│"; sep="│"
             ;;
         *)
-            border_left="|"
-            border_right="|"
-            border_sep="|"
+            tl="+"; tr="+"; bl="+"; br="+"
+            h="-"; v="|"; sep="|"
             ;;
     esac
 
-    # Read all lines into an array
+    # Read input lines
     while IFS= read -r line; do
         lines+=("$line")
     done
 
-    # Compute max width of each column
+    # Calculate column widths
     for line in "${lines[@]}"; do
         IFS=' ' read -r -a cols <<< "$line"
         for i in "${!cols[@]}"; do
@@ -373,51 +369,45 @@ cal-tui::table() {
     done
 
     # Draw top border
-    printf "${CYAN}"
-    printf "%s" "$border_left"
+    printf "${CYAN}${tl}"
     for i in "${!col_widths[@]}"; do
-        printf "%s" "$(printf '─%.0s' $(seq 1 ${col_widths[$i]}))"
-        [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$border_sep"
+        printf '%*s' "${col_widths[$i]}" '' | tr ' ' "$h"
+        [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$sep"
     done
-    printf "%s\n" "$border_right"
-    printf "${WHITE}"
+    printf "${tr}\n${WHITE}"
 
-    # Print each line with color and border
+    # Print rows
     for idx in "${!lines[@]}"; do
         IFS=' ' read -r -a cols <<< "${lines[$idx]}"
-        printf "%s" "$border_left"
+        printf "%s" "$v"
         for i in "${!cols[@]}"; do
             color="${WHITE}"
             [[ $i -eq 0 ]] && color="${GREEN}"
             [[ $i -eq 1 ]] && color="${YELLOW}"
             printf " ${color}%-*s${WHITE} " "${col_widths[$i]}" "${cols[$i]}"
-            [[ $i -lt $((${#cols[@]} - 1)) ]] && printf "%s" "$border_sep"
+            [[ $i -lt $((${#cols[@]} - 1)) ]] && printf "%s" "$sep"
         done
-        printf "%s\n" "$border_right"
+        printf "%s\n" "$v"
 
-        # Show header separator under the first line
+        # Header separator
         if [[ $header_shown == false ]]; then
-            printf "${CYAN}"
-            printf "%s" "$border_left"
+            printf "${CYAN}${v}"
             for i in "${!col_widths[@]}"; do
-                printf "%s" "$(printf '─%.0s' $(seq 1 ${col_widths[$i]}))"
-                [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$border_sep"
+                printf '%*s' "${col_widths[$i]}" '' | tr ' ' "$h"
+                [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$sep"
             done
-            printf "%s\n" "$border_right"
-            printf "${WHITE}"
+            printf "%s\n" "$v${WHITE}"
             header_shown=true
         fi
     done
 
     # Draw bottom border
-    printf "${CYAN}"
-    printf "%s" "$border_left"
+    printf "${CYAN}${bl}"
     for i in "${!col_widths[@]}"; do
-        printf "%s" "$(printf '─%.0s' $(seq 1 ${col_widths[$i]}))"
-        [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$border_sep"
+        printf '%*s' "${col_widths[$i]}" '' | tr ' ' "$h"
+        [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$sep"
     done
-    printf "%s\n" "$border_right"
-    printf "${WHITE}"
+    printf "${br}\n${WHITE}"
 }
 
 ### DYNAMIC MENU THAT RUNS COMMANDS ###
@@ -475,7 +465,6 @@ cal-tui::main_menu() {
 
         # Input prompt aligned to the menu block
         echo
-        #read -rp "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" choice
         choice=$(cal-tui::input_prompt "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" true '^[0-9]+$' "Only digits allowed.")
 
         if (( choice >= 0 && choice <= ${#options[@]} )); then
@@ -535,7 +524,6 @@ cal-tui::main_menu_return_index() {
 
         # Input prompt aligned to the same column
         echo
-        #read -rp "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" choice
         choice=$(cal-tui::input_prompt "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" true '^[0-9]+$' "Only digits allowed.")
         if (( choice >= 0 && choice <= ${#_options[@]} )); then
             # shellcheck disable=SC2034
