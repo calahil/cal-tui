@@ -252,93 +252,33 @@ cal-tui::progress_bar() {
     fi
 }
 
-cal-tui::table() {
-    local -a lines
-    local -a col_widths
-    local icon_mode="${ICON_OVERRIDE:-text}"
-    local header_shown=false
+### RUNS COMMANDS ###
+# Usage: cal-tui::proxy_run COMMANDS CALLBACK
+cal-tui::proxy_run() {
+    local packed_command="$1"
+    local packed_callback="$2"
 
-    # Define border sets per mode
-    local tl tr bl br h v sep
-    case "$icon_mode" in
-        emoji)
-            tl="🟩"; tr="🟩"; bl="🟩"; br="🟩"
-            h="🟩"; v="🟩"; sep="🟩"
-            ;;
-        nerd)
-            tl="┌"; tr="┐"; bl="└"; br="┘"
-            h="─"; v="│"; sep="│"
-            ;;
-        *)
-            tl="+"; tr="+"; bl="+"; br="+"
-            h="-"; v="|"; sep="|"
-            ;;
-    esac
-
-    # Read input lines
-    while IFS= read -r line; do
-        lines+=("$line")
-    done
-
-    # Calculate column widths
-    for line in "${lines[@]}"; do
-        IFS=' ' read -r -a cols <<< "$line"
-        for i in "${!cols[@]}"; do
-            [[ ${#cols[i]} -gt ${col_widths[$i]:-0} ]] && col_widths[$i]=${#cols[i]}
-        done
-    done
-
-    # Draw top border
-    printf "${CYAN}${tl}"
-    for i in "${!col_widths[@]}"; do
-        printf '%*s' "${col_widths[$i]}" '' | tr ' ' "$h"
-        [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$sep"
-    done
-    printf "${tr}\n${WHITE}"
-
-    # Print rows
-    for idx in "${!lines[@]}"; do
-        IFS=' ' read -r -a cols <<< "${lines[$idx]}"
-        printf "%s" "$v"
-        for i in "${!cols[@]}"; do
-            color="${WHITE}"
-            [[ $i -eq 0 ]] && color="${GREEN}"
-            [[ $i -eq 1 ]] && color="${YELLOW}"
-            printf " ${color}%-*s${WHITE} " "${col_widths[$i]}" "${cols[$i]}"
-            [[ $i -lt $((${#cols[@]} - 1)) ]] && printf "%s" "$sep"
-        done
-        printf "%s\n" "$v"
-
-        # Header separator
-        if [[ $header_shown == false ]]; then
-            printf "${CYAN}${v}"
-            for i in "${!col_widths[@]}"; do
-                printf '%*s' "${col_widths[$i]}" '' | tr ' ' "$h"
-                [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$sep"
-            done
-            printf "%s\n" "$v${WHITE}"
-            header_shown=true
-        fi
-    done
-
-    # Draw bottom border
-    printf "${CYAN}${bl}"
-    for i in "${!col_widths[@]}"; do
-        printf '%*s' "${col_widths[$i]}" '' | tr ' ' "$h"
-        [[ $i -lt $((${#col_widths[@]} - 1)) ]] && printf "%s" "$sep"
-    done
-    printf "${br}\n${WHITE}"
+    IFS='|' read -ra unpacked_command <<< "$packed_command"
+    IFS='|' read -ra unpacked_callback <<< "$packed_callback"
+     
+    "${unpacked_command[@]}"
+    if cal-tui::confirm_prompt "Return to Menu?" "y"; then
+        echo "${unpacked_callback[@]}"
+        "${unpacked_callback[@]}"
+    else
+        cal-tui::exit
+    fi 
 }
 
 ### DYNAMIC MENU THAT RUNS COMMANDS ###
-# Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CMD_ARG
+# Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK
 cal-tui::menu() {
     local title="$1"
     shift
     local -n _options=$1
     local -n _icons=$2
     local -n _commands=$3
-    local -n _cmd_arg=$4
+    local -n _callback=$4
 
     local rows cols
     rows=$(tput lines)
@@ -346,8 +286,25 @@ cal-tui::menu() {
 
     while true; do
         cal-tui::clear_screen
+        
+        # === CORNER INFO ===
+        # === Top-left: Hostname
+        tput cup 0 0
+        echo -ne "${CYAN}$(cal-tui::get_icon COMPUTER) $(hostname)${RESET}"
 
-        # Build the full menu content
+        # === Top-right: SHLVL
+        tput cup 0 $((cols - 16))
+        echo -ne "${MAGENTA}🔁 Shells: $SHLVL${RESET}"
+
+        # === Bottom-left: Time
+        tput cup 1 0
+        echo -ne "${BLUE}⏰ $(date +%T)${RESET}"
+
+        # === Bottom-right: Date
+        tput cup 1 $((cols - 16))
+        echo -ne "${YELLOW}📅 $(date +%Y-%m-%d)${RESET}"
+        
+        # === Build the menu
         menu_lines=()
         menu_lines+=("$(cal-tui::print_header "$title")")
         menu_lines+=("")
@@ -356,7 +313,7 @@ cal-tui::menu() {
         done
         menu_lines+=("")
 
-        # Compute max visible width (excluding ANSI codes)
+        # === Compute max visible width (excluding ANSI codes)
         local max_len=0
         for line in "${menu_lines[@]}"; do
             local stripped
@@ -367,24 +324,24 @@ cal-tui::menu() {
         local start_col=$(( (cols - max_len) / 2 ))
         local start_row=$(( (rows - ${#menu_lines[@]}) / 2 ))
 
-        # Add vertical padding
+        # === Add vertical padding
         for ((i = 0; i < start_row; i++)); do echo; done
 
-        # Print the menu block
+        # === Print the menu block
         for line in "${menu_lines[@]}"; do
             printf "%*s%s\n" "$start_col" "" "$line"
         done
 
-        # Input prompt aligned to the menu block
+        # === Input prompt aligned to the menu block
         echo
         choice=$(cal-tui::input_prompt "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" true '^[0-9]+$' "Only digits allowed.")
 
-        if (( choice >= 0 && choice <= ${#_options[@]} )); then
+        if (( choice >= 1 && choice <= ${#_options[@]} )); then
             cal-tui::clear_screen
             local cmd="${_commands[$((choice-1))]}"
-            local args=("${_cmd_arg[$((choice -1))]}")
-            
-            "$cmd" "${args[@]}"
+            local callback=("${_callback[$((choice -1))]}")
+
+            cal-tui::proxy_run "$cmd" "$callback"
             return
         else
             cal-tui::print_error "Invalid choice. Try again."
