@@ -53,9 +53,14 @@ my_func() {
   cal-tui::print_info "This is a menu option."
 }
 
-cal-tui::main_menu "Main Menu" \
-  "Do something" "icon1" "my_func" \
-  "Quit" "icon2" "exit"
+main() {
+    cal-tui::init_icons "nerd"
+    local -a options=("My Function" "Exit")
+    local -a icons=($(cal-tui::get_icon SUCCESS) $(cal-tui::get_icon EXIT))
+    local -a commands=(my_func cal-tui::exit)
+
+    cal-tui::menu "Main Menu" options icons commands
+}
 ```
 
 ### Input With Validation
@@ -78,6 +83,12 @@ if cal-tui::confirm_prompt "Continue with installation?" "n"; then
 else
   cal-tui::print_info "Canceled."
 fi
+```
+
+### Icon use
+```bash
+cal-tui::init_icons "nerd"
+$(cal-tui::get_icon SUCCESS)
 ```
 
 ---

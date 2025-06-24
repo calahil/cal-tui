@@ -100,24 +100,24 @@ cal-tui::print_menu_item() {
 }
 
 cal-tui::print_info() {
-    echo -e "${BOLD}${YELLOW}[$(cal-tui::get_icon INFO)] $1${RESET}"
+    echo -e "${BOLD}${YELLOW}[$(cal-tui::get_icon INFO)] $1${RESET}" >&2
 }
 
 cal-tui::print_error() {
-    echo -e "${BOLD}${RED}[$(cal-tui::get_icon ERROR)]${MAGENTA} $1${RESET}"
+    echo -e "${BOLD}${RED}[$(cal-tui::get_icon ERROR)]${MAGENTA} $1${RESET}" >&2
 }
 
 cal-tui::print_log() {
     local icon="$1"; shift
-    echo -e "${BOLD}${YELLOW}[${icon}] $*${RESET}"
+    echo -e "${BOLD}${YELLOW}[${icon}] $*${RESET}" >&2
 }
 
 cal-tui::print_success() {
-    echo -e "${BOLD}${GREEN}[$(cal-tui::get_icon SUCCESS)] $*${RESET}"
+    echo -e "${BOLD}${GREEN}[$(cal-tui::get_icon SUCCESS)] $*${RESET}" >&2
 }
 
 cal-tui::print_skip() {
-    echo -e "${BOLD}${BLUE}[$(cal-tui::get_icon SKIP)] $*${RESET}"
+    echo -e "${BOLD}${BLUE}[$(cal-tui::get_icon SKIP)] $*${RESET}" >&2
 }
 
 cal-tui::exit() {
@@ -211,7 +211,7 @@ cal-tui::progress_bar() {
                     bar+="◼️" 
             done
         fi
-        printf "\r%s %d%%" "$bar" "$percent"
+        printf "\r%s %d%%" "$bar" "$percent"  >&2
         if [[ "$current" -eq "$total" ]]; then
             echo ""
         fi
@@ -237,15 +237,15 @@ cal-tui::progress_bar() {
             done
             bar+=""
         fi
-        printf "\r%s %d%%" "$bar" "$percent"
+        printf "\r%s %d%%" "$bar" "$percent" >&2
         if [[ "$current" -eq "$total" ]]; then
-            echo ""
+            echo "" >&2
         fi
     else
         bar=$(printf "%${filled}s" | tr '  ' '#')
         local space
         space=$(printf "%${empty}s")
-        printf "\r[%s%s] %d%%" "$bar" "$space" "$percent"
+        printf "\r[%s%s] %d%%" "$bar" "$space" "$percent" >&2
         if [[ "$current" -eq "$total" ]]; then
             echo ""
         fi
@@ -331,13 +331,14 @@ cal-tui::table() {
 }
 
 ### DYNAMIC MENU THAT RUNS COMMANDS ###
-# Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS
+# Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CMD_ARG
 cal-tui::menu() {
     local title="$1"
     shift
     local -n _options=$1
     local -n _icons=$2
     local -n _commands=$3
+    local -n _cmd_arg=$4
 
     local rows cols
     rows=$(tput lines)
@@ -378,9 +379,13 @@ cal-tui::menu() {
         echo
         choice=$(cal-tui::input_prompt "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" true '^[0-9]+$' "Only digits allowed.")
 
-        if (( choice >= 0 && choice <= ${#options[@]} )); then
+        if (( choice >= 0 && choice <= ${#_options[@]} )); then
             cal-tui::clear_screen
-            "${_commands[$((choice-1))]}"
+            local cmd="${_commands[$((choice-1))]}"
+            local args=("${_cmd_arg[$((choice -1))]}")
+            
+            "$cmd" "${args[@]}"
+            return
         else
             cal-tui::print_error "Invalid choice. Try again."
             sleep 1
