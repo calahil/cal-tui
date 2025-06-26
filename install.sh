@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh - Install cal-tui.sh to /usr/local/bin or custom location
+# install.sh - Install cal-tui.sh to $HOME/.local/bin or custom location
 # Usage:
 #   bash -c "$(curl -fsSL https://raw.githubusercontent.com/calahil/cal-tui/main/install.sh)"
 #   OR

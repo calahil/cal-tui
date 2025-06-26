@@ -48,7 +48,9 @@ cal-tui::init_icons() {
             [GIT]="🗂️" [GITBRANCH]="🪵" [GITCOMMIT]="📝" [GITPUSH]="🔄"
             [GITHUB]="😺" [GITLAB]="🦊" [GITEA]="🫖" [C]="🇨"
             [CSHARP]="©️" [DOCKER]="⛴️" [PYTHON]="𓆙" [TYPESCRIPT]="🇹"
-            [ADD]="➕" [BACK]="↩️" [EXIT]="🚪" [HEADER]="*️⃣ "
+            [ADD]="➕" [BACK]="↩️" [EXIT]="🚪" [HEADER]="*️⃣ " [CLOCK]="⏰"
+            [CALENDER]="📅" [PROMPT]="💲" [UP]="🔼 " [DOWN]="🔽 " [LOG]="📜"
+            [GREEN_DOT]="🟢" [RED_DOT]="🔴" [PLEX]="🎬" [SWARM]="🐝" [REMOTE]="🖥️"
         )
     elif [[ $mode == "nerd" ]]; then
         ICON_MAP=(
@@ -62,7 +64,10 @@ cal-tui::init_icons() {
             [GIT]=" " [GITBRANCH]=" " [GITCOMMIT]=" " [GITPUSH]=" "
             [GITHUB]=" " [GITLAB]=" " [GITEA]=" " [C]=" "
             [CSHARP]="󰌛 " [DOCKER]="󰡨 " [PYTHON]=" " [TYPESCRIPT]=" "
-            [ADD]=" " [BACK]="󰌑 " [EXIT]="󰈆 " [HEADER]="󰎃 "
+            [ADD]=" " [BACK]="󰌑 " [EXIT]="󰈆 " [HEADER]="󰎃 " [CLOCK]=" "
+            [CALENDER]=" " [PROMPT]=" " [UP]=" " [DOWN]=" " [LOG]=" "
+            [GREEN_DOT]="${GREEN} " [RED_DOT]="${RED} " [PLEX]="󰚺 " [SWARM]="󱃎 "
+            [REMOTE]="󰢹 "
         )
     else
         ICON_MAP=(
@@ -76,7 +81,10 @@ cal-tui::init_icons() {
             [GIT]="GIT" [GITBRANCH]="BRANCH" [GITCOMMIT]="COMMIT" [GITPUSH]="PUSH"
             [GITHUB]="GITHUB" [GITLAB]="GITLAB" [GITEA]="GITEA" [C]="[C]" 
             [CSHARP]="[C#]" [DOCKER]="[DO]" [PYTHON]="[PY]" [TYPESCRIPT]="[TS]"
-            [ADD]="[+]" [BACK]="<-" [EXIT]="[>]" [HEADER]="[*]"
+            [ADD]="[+]" [BACK]="<-" [EXIT]="[>]" [HEADER]="[*]" [CLOCK]="TIME"
+            [CALENDAR]="DATE" [PROMPT]="[$]" [UP]="UP" [DOWN]="DOWN" [LOG]="LOG"
+            [GREEN_DOT]="${GREEN}UP${RESET}" [RED_DOT]="${RED}DOWN${RESET}" [PLEX]="PLEX" [SWARM]="SWARM"
+            [REMOTE]="REMOTE"
         )
     fi
 }
@@ -96,11 +104,11 @@ cal-tui::print_header() {
 }
 
 cal-tui::print_menu_item() {
-    echo -e "  ${BOLD}${WHITE}$1)${RESET} ${YELLOW}$2 $3${RESET}"
+    echo -e "  ${BOLD}${WHITE}$1)${RESET} ${BLUE}$2${RESET} ${BOLD}${YELLOW}$3${RESET}"
 }
 
 cal-tui::print_info() {
-    echo -e "${BOLD}${YELLOW}[$(cal-tui::get_icon INFO)] $1${RESET}" >&2
+    echo -e "${BOLD}${YELLOW}[$(cal-tui::get_icon INFO)] ${BOLD}${YELLOW}$1${RESET}" >&2
 }
 
 cal-tui::print_error() {
@@ -109,7 +117,7 @@ cal-tui::print_error() {
 
 cal-tui::print_log() {
     local icon="$1"; shift
-    echo -e "${BOLD}${YELLOW}[${icon}] $*${RESET}" >&2
+    echo -e "${BOLD}${YELLOW}[${icon}]{$YELLOW} $*${RESET}" >&2
 }
 
 cal-tui::print_success() {
@@ -122,7 +130,7 @@ cal-tui::print_skip() {
 
 cal-tui::exit() {
      cal-tui::clear_screen
-     echo "Goodbye $USER!"
+     echo -e "${REVERSE}Goodbye $USER!${RESET}"
      exit 0
 }
 
@@ -252,14 +260,40 @@ cal-tui::progress_bar() {
     fi
 }
 
+DELIM=$'\x1F'
+
+cal-tui::build_string() {
+    local result=""
+    local first=1
+
+    for arg in "$@"; do
+        if [[ $first -eq 1 ]]; then
+            result="$arg"
+            first=0
+        else
+            result+="${DELIM}${arg}"
+        fi
+    done
+
+    echo "$result"
+}
+
+cal-tui::parse_string() {
+    local input="$1"
+    IFS="$DELIM" read -ra fields <<< "$input"
+
+    for field in "${fields[@]}"; do
+        echo "$field"
+    done
+}
+
 ### RUNS COMMANDS ###
 # Usage: cal-tui::proxy_run COMMANDS CALLBACK
 cal-tui::proxy_run() {
     local packed_command="$1"
     local packed_callback="$2"
-
-    IFS='|' read -ra unpacked_command <<< "$packed_command"
-    IFS='|' read -ra unpacked_callback <<< "$packed_callback"
+    readarray -t unpacked_command < <(cal-tui::parse_string "$packed_command")
+    readarray -t unpacked_callback < <(cal-tui::parse_string "$packed_callback")
      
     "${unpacked_command[@]}"
     if cal-tui::confirm_prompt "Return to Menu?" "y"; then
@@ -294,15 +328,15 @@ cal-tui::menu() {
 
         # === Top-right: SHLVL
         tput cup 0 $((cols - 16))
-        echo -ne "${MAGENTA}🔁 Shells: $SHLVL${RESET}"
+        echo -ne "${MAGENTA}$(cal-tui::get_icon PROMPT) Shells: $SHLVL${RESET}"
 
         # === Bottom-left: Time
         tput cup 1 0
-        echo -ne "${BLUE}⏰ $(date +%T)${RESET}"
+        echo -ne "${BLUE}$(cal-tui::get_icon CLOCK) $(date +%T)${RESET}"
 
         # === Bottom-right: Date
         tput cup 1 $((cols - 16))
-        echo -ne "${YELLOW}📅 $(date +%Y-%m-%d)${RESET}"
+        echo -ne "${YELLOW}$(cal-tui::get_icon CALENDAR) $(date +%Y-%m-%d)${RESET}"
         
         # === Build the menu
         menu_lines=()
@@ -339,13 +373,10 @@ cal-tui::menu() {
         if (( choice >= 1 && choice <= ${#_options[@]} )); then
             cal-tui::clear_screen
             local cmd="${_commands[$((choice-1))]}"
-            local callback=("${_callback[$((choice -1))]}")
+            local callback="${_callback[$((choice -1))]}"
 
             cal-tui::proxy_run "$cmd" "$callback"
             return
-        else
-            cal-tui::print_error "Invalid choice. Try again."
-            sleep 1
         fi
     done
 }

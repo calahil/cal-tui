@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 # example.sh - Demonstrates use of the Bash TUI library
 
 source ./cal-tui.sh
@@ -21,9 +22,24 @@ show_progress() {
 
 main() {
     cal-tui::init_icons "nerd"
-    local -a options=("Input Prompt" "Progress Bar" "Print Success" "Exit")
-    local -a icons=($(cal-tui::get_icon BASHPROMPT) $(cal-tui::get_icon SPACESHIP) $(cal-tui::get_icon SUCCESS) $(cal-tui::get_icon EXIT))
-    local -a commands=(bash show_progress show_info cal-tui::exit)
+    local -a options=(
+        "Input Prompt" 
+        "Progress Bar" 
+        "Print Success" 
+        "Exit"
+    )
+    local -a icons=(
+        "$(cal-tui::get_icon BASHPROMPT)" 
+        "$(cal-tui::get_icon SPACESHIP)" 
+        "$(cal-tui::get_icon SUCCESS)"
+        "$(cal-tui::get_icon EXIT)"
+    )
+    local -a commands=(
+        "bash" 
+        "show_progress" 
+        "show_info" 
+        "cal-tui::exit"
+    )
 
     cal-tui::menu "Demo Menu" options icons commands
 }
