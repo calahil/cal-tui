@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# cal-tui.sh - A minimal, reusable TUI (Text-based User Interface) Bash library
-# License: MIT
-# Source: https://github.com/calahil/cal-tui
+# shellcheck disable=SC2034 
+# === cal-tui.sh - A minimal, reusable TUI (Text-based User Interface) Bash library
+# === License: MIT
+# === Source: https://github.com/calahil/cal-tui
 
+# DELIM="|"
+# === DEFAULT DELIMITER === 
+# === can be overridden by setting DELIM globally
+: "${DELIM:=|}"
 
 # === CODE DEFINITIONS ===
 RESET="\033[0m"
 BOLD="\033[1m"
 REVERSE="\033[7m"
-# UNDERLINE="\033[4m"
+UNDERLINE="\033[4m"
 
 # === FOREGROUND COLORS ===
 RED="\033[31m"
@@ -20,8 +25,6 @@ CYAN="\033[36m"
 WHITE="\033[37m"
 
 # === ICON SUPPORT ===
-#
-# available options  "emoji" "nerd" "text"
 ICON_OVERRIDE="${CALDEV_ICON:-nerd}"
 
 has_nerd_font() {
@@ -33,6 +36,8 @@ has_emoji_support() {
 
 declare -A ICON_MAP
 
+# === available options  "emoji" "nerd" "text"
+# === Usage: cal-tui::init_icons "nerd"
 cal-tui::init_icons() {
     local mode="${1:-$ICON_OVERRIDE}"
 
@@ -66,7 +71,7 @@ cal-tui::init_icons() {
             [CSHARP]="󰌛 " [DOCKER]="󰡨 " [PYTHON]=" " [TYPESCRIPT]=" "
             [ADD]=" " [BACK]="󰌑 " [EXIT]="󰈆 " [HEADER]="󰎃 " [CLOCK]=" "
             [CALENDER]=" " [PROMPT]=" " [UP]=" " [DOWN]=" " [LOG]=" "
-            [GREEN_DOT]="${GREEN} " [RED_DOT]="${RED} " [PLEX]="󰚺 " [SWARM]="󱃎 "
+            [GREEN_DOT]="${GREEN} ${RESET}" [RED_DOT]="${RED} ${RESET}" [PLEX]="󰚺 " [SWARM]="󱃎 "
             [REMOTE]="󰢹 "
         )
     else
@@ -94,13 +99,13 @@ cal-tui::get_icon() {
     echo "${ICON_MAP[$key]:-}"
 }
 
-### GENERAL UTILITY FUNCTIONS ###
+# === GENERAL UTILITY FUNCTIONS ===
 cal-tui::clear_screen() {
     tput reset
 }
 
 cal-tui::print_header() {
-    echo -e "${BOLD}${CYAN}$(cal-tui::get_icon HEADER) $1 $(cal-tui::get_icon HEADER)${RESET}"
+    echo -e "${BOLD}${CYAN}${UNDERLINE}$(cal-tui::get_icon HEADER) $1 $(cal-tui::get_icon HEADER)${RESET}"
 }
 
 cal-tui::print_menu_item() {
@@ -134,8 +139,8 @@ cal-tui::exit() {
      exit 0
 }
 
-### INPUT WITH VALIDATION ###
-# Usage: input=$(cal-tui::input_prompt "Prompt text" true 'regex' 'Error message')
+# === INPUT WITH VALIDATION ===
+# === Usage: input=$(cal-tui::input_prompt "Prompt text" true 'regex' 'Error message')
 cal-tui::input_prompt() {
     local prompt="$1"
     local required="${2:-false}"
@@ -162,8 +167,8 @@ cal-tui::input_prompt() {
     echo "$input"
 }
 
-### YES/NO CONFIRMATION ###
-# Usage: if cal-tui::confirm_prompt "Are you sure?" "n"; then ...
+# === YES/NO CONFIRMATION ===
+# === Usage: if cal-tui::confirm_prompt "Are you sure?" "n"; then ...
 cal-tui::confirm_prompt() {
     local prompt="${1:-Are you sure?}"
     local default="${2:-y}"
@@ -193,8 +198,8 @@ cal-tui::confirm_prompt() {
     done
 }
 
-### PROGRESS BAR ###
-# Usage: cal-tui::progress_bar 3 10
+# === PROGRESS BAR ===
+# === Usage: cal-tui::progress_bar 3 10
 cal-tui::progress_bar() {
     local current=$1
     local total=$2
@@ -260,41 +265,58 @@ cal-tui::progress_bar() {
     fi
 }
 
-DELIM=$'\x1F'
-
+# === STRING BUILDER ===
+# === Usage: var=$(cal-tui::build_string "ssh" "$host" "command")
 cal-tui::build_string() {
+    local delim="${DELIM}"
     local result=""
     local first=1
-
     for arg in "$@"; do
+        # === Escape delimiter inside arguments
+        arg="${arg//${delim}/${delim}${delim}}"
         if [[ $first -eq 1 ]]; then
             result="$arg"
             first=0
         else
-            result+="${DELIM}${arg}"
+            result+="${delim}${arg}"
         fi
     done
-
     echo "$result"
 }
 
+# === ARRAY FROM STRING BUILDER ===  (requires Bash ≥ 4.3)
+# === Usage: cal-tui::parse_string "$built_string" out_array
 cal-tui::parse_string() {
     local input="$1"
-    IFS="$DELIM" read -ra fields <<< "$input"
+    local out_array_name="$2"
+    local delim="${DELIM}"
+    local temp_delim=$'\x1F'
 
+    # === Replace escaped delimiters with temp token
+    input="${input//${delim}${delim}/${temp_delim}}"
+
+    local -a result=()
+    IFS="$delim" read -ra fields <<< "$input"
     for field in "${fields[@]}"; do
-        echo "$field"
+        result+=("${field//${temp_delim}/${delim}}")
     done
+
+    # === Return array using nameref, no eval needed
+    declare -n out_array="$out_array_name"
+    out_array=("${result[@]}")
 }
 
-### RUNS COMMANDS ###
-# Usage: cal-tui::proxy_run COMMANDS CALLBACK
+# === RUNS COMMANDS ===
+# === Usage: cal-tui::proxy_run COMMANDS CALLBACK
 cal-tui::proxy_run() {
     local packed_command="$1"
     local packed_callback="$2"
-    readarray -t unpacked_command < <(cal-tui::parse_string "$packed_command")
-    readarray -t unpacked_callback < <(cal-tui::parse_string "$packed_callback")
-     
+    local -a unpacked_command
+    local -a unpacked_callback
+
+    cal-tui::parse_string "$packed_command" unpacked_command
+    cal-tui::parse_string "$packed_callback" unpacked_callback
+
     "${unpacked_command[@]}"
     if cal-tui::confirm_prompt "Return to Menu?" "y"; then
         echo "${unpacked_callback[@]}"
@@ -304,8 +326,8 @@ cal-tui::proxy_run() {
     fi 
 }
 
-### DYNAMIC MENU THAT RUNS COMMANDS ###
-# Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK
+# === DYNAMIC MENU THAT RUNS COMMANDS ===
+# === Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK
 cal-tui::menu() {
     local title="$1"
     shift

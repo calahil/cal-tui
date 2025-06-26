@@ -53,13 +53,18 @@ my_func() {
   cal-tui::print_info "This is a menu option."
 }
 
+my_func_with_args() {
+    local temp="$1"
+    echo "$temp"
+}
 main() {
     cal-tui::init_icons "nerd"
-    local -a options=("My Function" "Exit")
-    local -a icons=($(cal-tui::get_icon SUCCESS) $(cal-tui::get_icon EXIT))
-    local -a commands=(my_func cal-tui::exit)
+    local -a options=("My Function" "Print Args" "Exit")
+    local -a icons=("$(cal-tui::get_icon SUCCESS)" "$(cal-tui::get_icon COPY)" "$(cal-tui::get_icon EXIT)")
+    local -a commands=("my_func" "$(cal-tui::build_string "my_func_with_args" "Hello World")" "cal-tui::exit")
+    local -a callbacks=("main" "main" "")
 
-    cal-tui::menu "Main Menu" options icons commands
+    cal-tui::menu "Main Menu" options icons commands callbacks
 }
 ```
 
@@ -106,6 +111,8 @@ MIT License. See `LICENSE` file for full text.
 - [x] Dynamic menu
 - [x] Install via curl
 - [x] Icon support
+- [x] Pass commands and arguments to menu options
+- [x] Remove all instances of eval
 - [ ] Tables
 - [ ] Multi-field form input
 - [ ] Popup/dialog UI

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
-# example.sh - Demonstrates use of the Bash TUI library
+# === example.sh - Demonstrates use of the Bash TUI library
 
 source ./cal-tui.sh
 
@@ -12,7 +12,9 @@ show_info() {
 }
 
 show_progress() {
+    local header="$1"
     if cal-tui::confirm_prompt "Do you want to run a progress bar demo?" "y"; then
+        cal-tui::print_header "$header"
         for i in {1..20}; do
             sleep 0.1
             cal-tui::progress_bar "$i" 20
@@ -23,8 +25,9 @@ show_progress() {
 main() {
     cal-tui::init_icons "nerd"
     local -a options=(
-        "Input Prompt" 
-        "Progress Bar" 
+        "Bash" 
+        "Progress Bar"
+        "Show Info"
         "Print Success" 
         "Exit"
     )
@@ -32,16 +35,24 @@ main() {
         "$(cal-tui::get_icon BASHPROMPT)" 
         "$(cal-tui::get_icon SPACESHIP)" 
         "$(cal-tui::get_icon SUCCESS)"
+        "$(cal-tui::get_icon INFO)"
         "$(cal-tui::get_icon EXIT)"
     )
     local -a commands=(
         "bash" 
-        "show_progress" 
-        "show_info" 
+        "$(cal-tui::build_string "show_progress" "Header")" 
+        "show_info"
+        "$(cal-tui::build_string "cal-tui::print_success" "Great Job!")"
         "cal-tui::exit"
     )
-
-    cal-tui::menu "Demo Menu" options icons commands
+    local -a callbacks=(
+        "main"
+        "main"
+        "main"
+        "main"
+        ""
+    )
+    cal-tui::menu "Demo Menu" options icons commands callbacks
 }
 
 main
