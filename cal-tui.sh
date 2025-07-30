@@ -9,6 +9,9 @@
 # === can be overridden by setting DELIM globally
 : "${DELIM:=|}"
 
+# === STATE VARIABLE ===
+CAL_STATE=""
+
 # === CODE DEFINITIONS ===
 RESET="\033[0m"
 BOLD="\033[1m"
@@ -53,7 +56,7 @@ cal-tui::init_icons() {
             [GIT]="🗂️" [GITBRANCH]="🪵" [GITCOMMIT]="📝" [GITPUSH]="🔄"
             [GITHUB]="😺" [GITLAB]="🦊" [GITEA]="🫖" [C]="🇨"
             [CSHARP]="©️" [DOCKER]="⛴️" [PYTHON]="𓆙" [TYPESCRIPT]="🇹"
-            [ADD]="➕" [BACK]="↩️" [EXIT]="🚪" [HEADER]="*️⃣ " [CLOCK]="⏰"
+            [ADD]="➕" [MINUS]="➖" [BACK]="↩️" [EXIT]="🚪" [HEADER]="*️⃣ " [CLOCK]="⏰"
             [CALENDER]="📅" [PROMPT]="💲" [UP]="🔼 " [DOWN]="🔽 " [LOG]="📜"
             [GREEN_DOT]="🟢" [RED_DOT]="🔴" [PLEX]="🎬" [SWARM]="🐝" [REMOTE]="🖥️"
         )
@@ -69,7 +72,7 @@ cal-tui::init_icons() {
             [GIT]=" " [GITBRANCH]=" " [GITCOMMIT]=" " [GITPUSH]=" "
             [GITHUB]=" " [GITLAB]=" " [GITEA]=" " [C]=" "
             [CSHARP]="󰌛 " [DOCKER]="󰡨 " [PYTHON]=" " [TYPESCRIPT]=" "
-            [ADD]=" " [BACK]="󰌑 " [EXIT]="󰈆 " [HEADER]="󰎃 " [CLOCK]=" "
+            [ADD]=" " [MINUS]=" " [BACK]="󰌑 " [EXIT]="󰈆 " [HEADER]="󰎃 " [CLOCK]=" "
             [CALENDER]=" " [PROMPT]=" " [UP]=" " [DOWN]=" " [LOG]=" "
             [GREEN_DOT]="${GREEN} ${RESET}" [RED_DOT]="${RED} ${RESET}" [PLEX]="󰚺 " [SWARM]="󱃎 "
             [REMOTE]="󰢹 "
@@ -86,7 +89,7 @@ cal-tui::init_icons() {
             [GIT]="GIT" [GITBRANCH]="BRANCH" [GITCOMMIT]="COMMIT" [GITPUSH]="PUSH"
             [GITHUB]="GITHUB" [GITLAB]="GITLAB" [GITEA]="GITEA" [C]="[C]" 
             [CSHARP]="[C#]" [DOCKER]="[DO]" [PYTHON]="[PY]" [TYPESCRIPT]="[TS]"
-            [ADD]="[+]" [BACK]="<-" [EXIT]="[>]" [HEADER]="[*]" [CLOCK]="TIME"
+            [ADD]="[+]" [MINUS]="[-]" [BACK]="<-" [EXIT]="[>]" [HEADER]="[*]" [CLOCK]="TIME"
             [CALENDAR]="DATE" [PROMPT]="[$]" [UP]="UP" [DOWN]="DOWN" [LOG]="LOG"
             [GREEN_DOT]="${GREEN}UP${RESET}" [RED_DOT]="${RED}DOWN${RESET}" [PLEX]="PLEX" [SWARM]="SWARM"
             [REMOTE]="REMOTE"
@@ -109,7 +112,9 @@ cal-tui::print_header() {
 }
 
 cal-tui::print_menu_item() {
-    echo -e "  ${BOLD}${WHITE}$1)${RESET} ${BLUE}$2${RESET} ${BOLD}${YELLOW}$3${RESET}"
+    # $1 = number, $2 = icon, $3 = text
+    # Output without padding, caller will handle width
+    echo -e "${BOLD}${WHITE}$1)${RESET} ${BLUE}$2${RESET} ${BOLD}${YELLOW}$3${RESET}"
 }
 
 cal-tui::print_info() {
@@ -122,7 +127,7 @@ cal-tui::print_error() {
 
 cal-tui::print_log() {
     local icon="$1"; shift
-    echo -e "${BOLD}${YELLOW}[${icon}]{$YELLOW} $*${RESET}" >&2
+    echo -e "${BOLD}${YELLOW}[${icon}]${YELLOW} $*${RESET}" >&2
 }
 
 cal-tui::print_success() {
@@ -139,17 +144,31 @@ cal-tui::exit() {
      exit 0
 }
 
+cal-tui::strip_ansi() {
+    # Usage: cal-tui::strip_ansi "$string"
+    # Outputs string without ANSI color codes
+    echo -e "$1" | sed -r 's/\x1B\[[0-9;]*[mK]//g'
+}
+
 # === INPUT WITH VALIDATION ===
-# === Usage: input=$(cal-tui::input_prompt "Prompt text" true 'regex' 'Error message')
+# === Usage: input=$(cal-tui::input_prompt "Prompt text" required(true) 'regex' 'Error message' singlekey(true))
 cal-tui::input_prompt() {
     local prompt="$1"
     local required="${2:-false}"
     local regex="${3:-}"
     local error_message="${4:-Invalid input.}"
+    local singlekey="${5:-false}"
 
     local input=""
     while true; do
-        read -rp "$(echo -e "${CYAN}${prompt} ${RESET}")" input
+        local input
+        if [[ "$singlekey" == true ]]; then
+            echo -e "${CYAN}${prompt} ${RESET}" >&2 
+            read -rsn1 input
+            echo  # Print newline after keypress
+        else
+            read -rp "$(echo -e "${CYAN}${prompt} ${RESET}")" input
+        fi
 
         if [[ "$required" == true && -z "$input" ]]; then
             cal-tui::print_error "This field is required."
@@ -182,18 +201,19 @@ cal-tui::confirm_prompt() {
 
     local response
     while true; do
-        response=$(cal-tui::input_prompt "$prompt $default_hint" true "$regex" "Use $default_hint")
-
+        response=$(cal-tui::input_prompt "$prompt $default_hint" true "$regex" "Use $default_hint" true)
+        
         response="${response,,}"
-
+        response="${response//[$'\r\n']}"
+        
         if [[ -z "$response" ]]; then
             response="$default"
         fi
 
         case "$response" in
-            y|yes) return 0 ;;
-            n|no) return 1 ;;
-            *) cal-tui::print_error "Please answer yes or no." ;;
+            [y]) return 0 ;;
+            [n]) return 1 ;;
+            *) cal-tui::print_error "Please answer y or n." ;;
         esac
     done
 }
@@ -327,7 +347,10 @@ cal-tui::proxy_run() {
 }
 
 # === DYNAMIC MENU THAT RUNS COMMANDS ===
-# === Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK
+# === Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK KEYMAP_CMD KEYMAP_NAME
+
+# === DYNAMIC MENU THAT RUNS COMMANDS ===
+# === Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK KEYMAP_CMD KEYMAP_NAME
 cal-tui::menu() {
     local title="$1"
     shift
@@ -335,70 +358,314 @@ cal-tui::menu() {
     local -n _icons=$2
     local -n _commands=$3
     local -n _callback=$4
+    local -n _keymap_cmds=$5
+    local -n _keymap_name=$6
 
+    local MAX_ROWS=10
     local rows cols
     rows=$(tput lines)
     cols=$(tput cols)
 
+    # === SAFE tput wrapper ===
+    safe_tput_cup() {
+        local row=$1
+        local col=$2
+        (( row < 0 )) && row=0
+        (( col < 0 )) && col=0
+        tput cup "$row" "$col"
+    }
+
     while true; do
         cal-tui::clear_screen
-        
+
         # === CORNER INFO ===
-        # === Top-left: Hostname
-        tput cup 0 0
+        safe_tput_cup 0 0
         echo -ne "${CYAN}$(cal-tui::get_icon COMPUTER) $(hostname)${RESET}"
-
-        # === Top-right: SHLVL
-        tput cup 0 $((cols - 16))
+        safe_tput_cup 0 $((cols - 16))
         echo -ne "${MAGENTA}$(cal-tui::get_icon PROMPT) Shells: $SHLVL${RESET}"
-
-        # === Bottom-left: Time
-        tput cup 1 0
+        safe_tput_cup 1 0
         echo -ne "${BLUE}$(cal-tui::get_icon CLOCK) $(date +%T)${RESET}"
-
-        # === Bottom-right: Date
-        tput cup 1 $((cols - 16))
+        safe_tput_cup 1 $((cols - 16))
         echo -ne "${YELLOW}$(cal-tui::get_icon CALENDAR) $(date +%Y-%m-%d)${RESET}"
-        
-        # === Build the menu
-        menu_lines=()
-        menu_lines+=("$(cal-tui::print_header "$title")")
-        menu_lines+=("")
-        for i in "${!_options[@]}"; do
-            menu_lines+=("$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")")
+        safe_tput_cup 2 0
+        echo -ne "W: ${_keymap_name[0]:-Not Bound}"
+        safe_tput_cup 2 $((cols - 16))
+        echo -ne "A: ${_keymap_name[1]:-Not Bound}"
+        safe_tput_cup 3 0
+        echo -ne "S: ${_keymap_name[2]:-Not Bound}"
+        safe_tput_cup 3 $((cols - 16))
+        echo -ne "D: ${_keymap_name[3]:-Not Bound}"
+
+        # === MENU GRID BUILDING ===
+        local total_items=${#_options[@]}
+        local num_rows=$MAX_ROWS
+        local num_cols=$(( (total_items + MAX_ROWS - 1) / MAX_ROWS ))
+
+        # Calculate max visible width per item (to pad columns properly)
+        local max_width=0
+        for ((i = 0; i < total_items; i++)); do
+            local item_str
+            item_str="$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")"
+            local visible_stripped
+            visible_stripped=$(cal-tui::strip_ansi "$item_str")
+            (( ${#visible_stripped} > max_width )) && max_width=${#visible_stripped}
         done
-        menu_lines+=("")
+        local col_padding=4
+        local col_width=$((max_width + col_padding))
 
-        # === Compute max visible width (excluding ANSI codes)
-        local max_len=0
-        for line in "${menu_lines[@]}"; do
-            local stripped
-            stripped=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
-            (( ${#stripped} > max_len )) && max_len=${#stripped}
-        done
+        # Compute top-left corner for centering
+        local total_grid_width=$((col_width * num_cols))
+        local start_col=$(( (cols - total_grid_width) / 2 ))
+        local total_grid_height=$((num_rows + 3)) # 3 for header lines
+        local start_row=$(( (rows - total_grid_height) / 2 ))
+        (( start_row < 0 )) && start_row=0
+        (( start_col < 0 )) && start_col=0
 
-        local start_col=$(( (cols - max_len) / 2 ))
-        local start_row=$(( (rows - ${#menu_lines[@]}) / 2 ))
-
-        # === Add vertical padding
-        for ((i = 0; i < start_row; i++)); do echo; done
-
-        # === Print the menu block
-        for line in "${menu_lines[@]}"; do
-            printf "%*s%s\n" "$start_col" "" "$line"
-        done
-
-        # === Input prompt aligned to the menu block
+        # === PRINT HEADER ===
+        safe_tput_cup "$start_row" $(( (cols - ${#title}) / 2 ))
+        cal-tui::print_header "$title"
+        safe_tput_cup $((start_row + 1)) 0
         echo
-        choice=$(cal-tui::input_prompt "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" true '^[0-9]+$' "Only digits allowed.")
 
-        if (( choice >= 1 && choice <= ${#_options[@]} )); then
-            cal-tui::clear_screen
-            local cmd="${_commands[$((choice-1))]}"
-            local callback="${_callback[$((choice -1))]}"
+        # === PRINT MENU GRID ===
+        for ((r = 0; r < num_rows; r++)); do
+            safe_tput_cup $((start_row + 2 + r)) $start_col
+            for ((c = 0; c < num_cols; c++)); do
+                local i=$((c * num_rows + r))
+                if (( i >= total_items )); then
+                    continue
+                fi
+                local item_str
+                if ((i < 9 && total_items > 9)); then
+                    item_str="$(cal-tui::print_menu_item "0$((i+1))" "${_icons[i]}" "${_options[i]}")"
+                else
+                    item_str="$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")"
+                fi
+                # Calculate visible length to pad correctly
+                local visible_stripped
+                visible_stripped=$(cal-tui::strip_ansi "$item_str")
+                local pad_width=$((col_width - ${#visible_stripped}))
 
-            cal-tui::proxy_run "$cmd" "$callback"
-            return
-        fi
+                # Print the colored item string + spaces padding for alignment
+                printf "%s%*s" "$item_str" "$pad_width" ""
+            done
+        done
+
+        # === READ INPUT ===
+        safe_tput_cup $((start_row + 2 + num_rows + 1)) $(( (cols - 40) / 2 ))
+        echo -n "(1-${total_items} | w/a/s/d | ESC | BACKSPACE): "
+        IFS= read -rsn1 key
+
+        case "$key" in
+            [0-9])
+                if (( key >= 1 && key <= total_items )); then
+                    cal-tui::clear_screen
+                    local cmd="${_commands[$((key - 1))]}"
+                    cal-tui::proxy_run "$cmd" "$_callback"
+                    return
+                fi
+                ;;
+            $'\e') # ESC
+                cal-tui::exit
+                ;;
+            $'\x7f')  # Backspace
+                cal-tui::clear_screen
+                return
+                ;;
+            [wasd])
+                local idx
+                case "$key" in
+                    w) idx=0 ;;
+                    a) idx=1 ;;
+                    s) idx=2 ;;
+                    d) idx=3 ;;
+                esac
+                if [[ -n "${_keymap_cmds[$idx]}" ]]; then
+                    cal-tui::clear_screen
+                    local cmd="${_keymap_cmds[$idx]}"
+                    cal-tui::proxy_run "$cmd" "$_callback"
+                fi
+                ;;
+            *)
+                cal-tui::print_error "Not a valid key"
+                continue
+                ;;
+        esac
     done
 }
+
+# cal-tui::menu() {
+#     local title="$1"
+#     shift
+#     local -n _options=$1
+#     local -n _icons=$2
+#     local -n _commands=$3
+#     local -n _callback=$4
+#     local -n _keymap_cmds=$5
+#     local -n _keymap_name=$6
+#
+#     local rows cols
+#     rows=$(tput lines)
+#     cols=$(tput cols)
+#
+#     while true; do
+#         cal-tui::clear_screen
+#
+#         # === CORNER INFO ===
+#         tput cup 0 0
+#         echo -ne "${CYAN}$(cal-tui::get_icon COMPUTER) $(hostname)${RESET}"
+#         tput cup 0 $((cols - 16))
+#         echo -ne "${MAGENTA}$(cal-tui::get_icon PROMPT) Shells: $SHLVL${RESET}"
+#         tput cup 1 0
+#         echo -ne "${BLUE}$(cal-tui::get_icon CLOCK) $(date +%T)${RESET}"
+#         tput cup 1 $((cols - 16))
+#         echo -ne "${YELLOW}$(cal-tui::get_icon CALENDAR) $(date +%Y-%m-%d)${RESET}"
+#         tput cup 2 0
+#         echo -ne "W: ${_keymap_name[0]:-Not Bound}"
+#         tput cup 2 $((cols - 16))
+#         echo -ne "A: ${_keymap_name[1]:-Not Bound}"
+#         tput cup 3 0
+#         echo -ne "S: ${_keymap_name[2]:-Not Bound}"
+#         tput cup 3 $((cols - 16))
+#         echo -ne "D: ${_keymap_name[3]:-Not Bound}"
+#         
+#         # === Build the menu
+#         menu_lines=()
+#         menu_lines+=("$(cal-tui::print_header "$title")")
+#         menu_lines+=("")
+#         for i in "${!_options[@]}"; do
+#             menu_lines+=("$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")")
+#         done
+#         menu_lines+=("")
+#
+#         local max_len=0
+#         for line in "${menu_lines[@]}"; do
+#             local stripped
+#             stripped=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+#             (( ${#stripped} > max_len )) && max_len=${#stripped}
+#         done
+#
+#         local start_col=$(( (cols - max_len) / 2 ))
+#         local start_row=$(( (rows - ${#menu_lines[@]}) / 2 ))
+#
+#         for ((i = 0; i < start_row; i++)); do echo; done
+#         for line in "${menu_lines[@]}"; do
+#             printf "%*s%s\n" "$start_col" "" "$line"
+#         done
+#
+#         echo
+#         printf "%*s%s" "$start_col" "" "(0-9 | w/a/s/d | ESC | BACKSPACE): "
+#         IFS= read -rsn1 key
+#
+#         case "$key" in
+#             [0-9])
+#                 if (( key >= 1 && key <= ${#_options[@]} )); then
+#                     cal-tui::clear_screen
+#                     local cmd="${_commands[$((key - 1))]}"
+#                     cal-tui::proxy_run "$cmd" "$_callback"
+#                     return
+#                 fi
+#                 ;;
+#             $'\e') # ESC
+#                 cal-tui::exit
+#                 ;;
+#             $'\x7f')  # Backspace
+#                 cal-tui::clear_screen
+#                 return
+#                 ;;
+#             [wasd])
+#                 idx=""
+#                 case "$key" in
+#                     w) idx=0 ;;
+#                     a) idx=1 ;;
+#                     s) idx=2 ;;
+#                     d) idx=3 ;;
+#                 esac
+#
+#                 if [[ -n "${_keymap_cmds[$idx]}" ]]; then
+#                     cal-tui::clear_screen
+#                     local cmd="${_keymap_cmds[$idx]}"
+#                     cal-tui::proxy_run "$cmd" "$_callback"
+#                 fi
+#                 ;;
+#         esac
+#     done
+# }
+# # === DYNAMIC MENU THAT RUNS COMMANDS ===
+# # === Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK
+# cal-tui::menu() {
+#     local title="$1"
+#     shift
+#     local -n _options=$1
+#     local -n _icons=$2
+#     local -n _commands=$3
+#     local -n _callback=$4
+#
+#     local rows cols
+#     rows=$(tput lines)
+#     cols=$(tput cols)
+#
+#     while true; do
+#         cal-tui::clear_screen
+#         
+#         # === CORNER INFO ===
+#         # === Top-left: Hostname
+#         tput cup 0 0
+#         echo -ne "${CYAN}$(cal-tui::get_icon COMPUTER) $(hostname)${RESET}"
+#
+#         # === Top-right: SHLVL
+#         tput cup 0 $((cols - 16))
+#         echo -ne "${MAGENTA}$(cal-tui::get_icon PROMPT) Shells: $SHLVL${RESET}"
+#
+#         # === Bottom-left: Time
+#         tput cup 1 0
+#         echo -ne "${BLUE}$(cal-tui::get_icon CLOCK) $(date +%T)${RESET}"
+#
+#         # === Bottom-right: Date
+#         tput cup 1 $((cols - 16))
+#         echo -ne "${YELLOW}$(cal-tui::get_icon CALENDAR) $(date +%Y-%m-%d)${RESET}"
+#         
+#         # === Bottom-left: Time
+#         
+#         # === Build the menu
+#         menu_lines=()
+#         menu_lines+=("$(cal-tui::print_header "$title")")
+#         menu_lines+=("")
+#         for i in "${!_options[@]}"; do
+#             menu_lines+=("$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")")
+#         done
+#         menu_lines+=("")
+#
+#         # === Compute max visible width (excluding ANSI codes)
+#         local max_len=0
+#         for line in "${menu_lines[@]}"; do
+#             local stripped
+#             stripped=$(echo -e "$line" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+#             (( ${#stripped} > max_len )) && max_len=${#stripped}
+#         done
+#
+#         local start_col=$(( (cols - max_len) / 2 ))
+#         local start_row=$(( (rows - ${#menu_lines[@]}) / 2 ))
+#
+#         # === Add vertical padding
+#         for ((i = 0; i < start_row; i++)); do echo; done
+#
+#         # === Print the menu block
+#         for line in "${menu_lines[@]}"; do
+#             printf "%*s%s\n" "$start_col" "" "$line"
+#         done
+#
+#         # === Input prompt aligned to the menu block
+#         echo
+#         choice=$(cal-tui::input_prompt "$(printf "%*s%s" "$start_col" "" "Choose an option: ")" true '^[0-9]+$' "Only digits allowed.")
+#
+#         if (( choice >= 1 && choice <= ${#_options[@]} )); then
+#             cal-tui::clear_screen
+#             local cmd="${_commands[$((choice-1))]}"
+#             local callback="${_callback[$((choice -1))]}"
+#
+#             cal-tui::proxy_run "$cmd" "$callback"
+#             return
+#         fi
+#     done
+# }
