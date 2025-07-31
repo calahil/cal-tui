@@ -59,6 +59,7 @@ cal-tui::init_icons() {
             [ADD]="➕" [MINUS]="➖" [BACK]="↩️" [EXIT]="🚪" [HEADER]="*️⃣ " [CLOCK]="⏰"
             [CALENDER]="📅" [PROMPT]="💲" [UP]="🔼 " [DOWN]="🔽 " [LOG]="📜"
             [GREEN_DOT]="🟢" [RED_DOT]="🔴" [PLEX]="🎬" [SWARM]="🐝" [REMOTE]="🖥️"
+            [KEYBOARD]="⌨️"
         )
     elif [[ $mode == "nerd" ]]; then
         ICON_MAP=(
@@ -74,8 +75,8 @@ cal-tui::init_icons() {
             [CSHARP]="󰌛 " [DOCKER]="󰡨 " [PYTHON]=" " [TYPESCRIPT]=" "
             [ADD]=" " [MINUS]=" " [BACK]="󰌑 " [EXIT]="󰈆 " [HEADER]="󰎃 " [CLOCK]=" "
             [CALENDER]=" " [PROMPT]=" " [UP]=" " [DOWN]=" " [LOG]=" "
-            [GREEN_DOT]="${GREEN} ${RESET}" [RED_DOT]="${RED} ${RESET}" [PLEX]="󰚺 " [SWARM]="󱃎 "
-            [REMOTE]="󰢹 "
+            [GREEN_DOT]="󰳘 " [RED_DOT]="󰱦 " [PLEX]="󰚺 " [SWARM]="󱃎 "
+            [REMOTE]="󰢹 " [KEYBOARD]=" "
         )
     else
         ICON_MAP=(
@@ -91,8 +92,8 @@ cal-tui::init_icons() {
             [CSHARP]="[C#]" [DOCKER]="[DO]" [PYTHON]="[PY]" [TYPESCRIPT]="[TS]"
             [ADD]="[+]" [MINUS]="[-]" [BACK]="<-" [EXIT]="[>]" [HEADER]="[*]" [CLOCK]="TIME"
             [CALENDAR]="DATE" [PROMPT]="[$]" [UP]="UP" [DOWN]="DOWN" [LOG]="LOG"
-            [GREEN_DOT]="${GREEN}UP${RESET}" [RED_DOT]="${RED}DOWN${RESET}" [PLEX]="PLEX" [SWARM]="SWARM"
-            [REMOTE]="REMOTE"
+            [GREEN_DOT]="UP" [RED_DOT]="DOWN" [PLEX]="PLEX" [SWARM]="SWARM"
+            [REMOTE]="REMOTE" [KEYBOARD]="KEYS"
         )
     fi
 }
@@ -100,6 +101,14 @@ cal-tui::init_icons() {
 cal-tui::get_icon() {
     local key="$1"
     echo "${ICON_MAP[$key]:-}"
+}
+
+safe_tput_cup() {
+    local row=$1
+    local col=$2
+    (( row < 0 )) && row=0
+    (( col < 0 )) && col=0
+    tput cup "$row" "$col"
 }
 
 # === GENERAL UTILITY FUNCTIONS ===
@@ -112,10 +121,19 @@ cal-tui::print_header() {
 }
 
 cal-tui::print_menu_item() {
-    # $1 = number, $2 = icon, $3 = text
+    # $1 = number, $2 = icon, $3 = text, $4 = selected
     # Output without padding, caller will handle width
-    echo -e "${BOLD}${WHITE}$1)${RESET} ${BLUE}$2${RESET} ${BOLD}${YELLOW}$3${RESET}"
+    if [[ "$4" == "true" ]]; then
+        echo -e "${BOLD}${BLUE}${REVERSE}${BLUE} [$1] $2 $3 ${RESET}${BOLD}${BLUE}${RESET}"
+    else
+        echo -e "${BOLD}${WHITE}  [$1]${RESET} ${BLUE}$2${RESET} ${BOLD}${YELLOW}$3  ${RESET}"
+    fi
 }
+
+cal-tui::print_help_header() {
+    echo -e "${BOLD}${CYAN}$(cal-tui::get_icon KEYBOARD) $1 $(cal-tui::get_icon KEYBOARD)${RESET}"
+}
+
 
 cal-tui::print_info() {
     echo -e "${BOLD}${YELLOW}[$(cal-tui::get_icon INFO)] ${BOLD}${YELLOW}$1${RESET}" >&2
@@ -346,8 +364,74 @@ cal-tui::proxy_run() {
     fi 
 }
 
-# === DYNAMIC MENU THAT RUNS COMMANDS ===
-# === Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK KEYMAP_CMD KEYMAP_NAME
+cal-tui::print_widgets() {
+    local col=$1
+    # === CORNER INFO ===
+    safe_tput_cup 0 0
+    echo -ne "${CYAN}$(cal-tui::get_icon COMPUTER) $(hostname)${RESET}"
+    safe_tput_cup 0 $((col))
+    echo -ne "${MAGENTA}$(cal-tui::get_icon PROMPT) Shells: $SHLVL${RESET}"
+    safe_tput_cup 1 0
+    echo -ne "${BLUE}$(cal-tui::get_icon CLOCK) $(date +%T)${RESET}"
+    safe_tput_cup 1 $((col))
+    echo -ne "${YELLOW}$(cal-tui::get_icon CALENDAR) $(date +%Y-%m-%d)${RESET}"
+}
+
+cal-tui::print_help_menu() {
+    # $1 = _keymap_name
+    # # Output without padding, caller will handle width
+    local keybind_menu="Keybind Help"
+    local -n _keymap_names=$1
+    local -a keys=(
+        "↑/k" "↓/j" "←/h" "→/l" 
+        "1-9" " 󰌑 " " 󰭜 " " 󱊷 "
+        " W " " A " " S " " D "
+        )
+    local -a desc=(
+        "Move Up" "Move Down" "Page Back" "Page Forward"
+        "Select Index" "Select Current" "Previous Menu" "Quit"
+        "${keymap_name[0]:-Not Bound}" "${keymap_name[1]:-Not Bound}" "${keymap_name[2]:-Not Bound}" "${keymap_name[3]:-Not Bound}"        
+        )
+            
+    local columns
+    columns=$(tput cols)
+    local rows
+    rows=$(tput lines)
+    local column_width=$((columns / 4))
+    local total_columns=4
+    local current_column=0
+    local header_row=$((rows - 4))
+
+    safe_tput_cup $((header_row)) $(( (cols - (${#keybind_menu} + 6))  / 2 ))
+    cal-tui::print_help_header "$keybind_menu"
+
+    local -a sections=()
+    for ((i=0; i<${#keys[@]}; i++)); do
+        if ((i < total_columns)); then
+            safe_tput_cup $((header_row + 1)) $((column_width * current_column))
+            echo -ne "${BOLD}${CYAN}[${keys[i]}]${RESET} ${BLUE}${desc[$i]}${RESET}"
+            current_column=$((current_column + 1))
+            if ((current_column == 4)); then
+                current_column=0
+            fi
+        elif ((i < (total_columns * 2))); then
+            safe_tput_cup $((header_row + 2)) $((column_width * current_column))
+            echo -ne "${BOLD}${CYAN}[${keys[i]}]${RESET} ${BLUE}${desc[$i]}${RESET}"
+            current_column=$((current_column + 1))
+            if ((current_column == 4)); then
+                current_column=0
+            fi
+        else
+            safe_tput_cup $((header_row + 3)) $((column_width * current_column))
+            echo -ne "${BOLD}${CYAN}[${keys[i]}]${RESET} ${BLUE}${desc[$i]}${RESET}"
+            current_column=$((current_column + 1))
+            if ((current_column == 4)); then
+                current_column=0
+            fi
+
+        fi
+    done
+}
 
 # === DYNAMIC MENU THAT RUNS COMMANDS ===
 # === Usage: cal-tui::menu "Title" OPTIONS ICONS COMMANDS CALLBACK KEYMAP_CMD KEYMAP_NAME
@@ -361,114 +445,156 @@ cal-tui::menu() {
     local -n _keymap_cmds=$5
     local -n _keymap_name=$6
 
-    local MAX_ROWS=10
+    local MAX_ROWS=9
+    local MAX_COLS=1
+    local PAGE_SIZE=$((MAX_ROWS * MAX_COLS))
+
     local rows cols
     rows=$(tput lines)
     cols=$(tput cols)
 
-    # === SAFE tput wrapper ===
-    safe_tput_cup() {
-        local row=$1
-        local col=$2
-        (( row < 0 )) && row=0
-        (( col < 0 )) && col=0
-        tput cup "$row" "$col"
-    }
+    local current_page=0
+    local selected_index=0
+    local total_items=${#_options[@]}
+    local total_pages=$(( (total_items + PAGE_SIZE - 1) / PAGE_SIZE ))
 
+    
+    local need_redraw=true
+    tput civis
     while true; do
-        cal-tui::clear_screen
+        if $need_redraw; then
+            need_redraw=false
+            # Clamp page range
+            (( current_page < 0 )) && current_page=0
+            (( current_page >= total_pages )) && current_page=$((total_pages - 1))
 
-        # === CORNER INFO ===
-        safe_tput_cup 0 0
-        echo -ne "${CYAN}$(cal-tui::get_icon COMPUTER) $(hostname)${RESET}"
-        safe_tput_cup 0 $((cols - 16))
-        echo -ne "${MAGENTA}$(cal-tui::get_icon PROMPT) Shells: $SHLVL${RESET}"
-        safe_tput_cup 1 0
-        echo -ne "${BLUE}$(cal-tui::get_icon CLOCK) $(date +%T)${RESET}"
-        safe_tput_cup 1 $((cols - 16))
-        echo -ne "${YELLOW}$(cal-tui::get_icon CALENDAR) $(date +%Y-%m-%d)${RESET}"
-        safe_tput_cup 2 0
-        echo -ne "W: ${_keymap_name[0]:-Not Bound}"
-        safe_tput_cup 2 $((cols - 16))
-        echo -ne "A: ${_keymap_name[1]:-Not Bound}"
-        safe_tput_cup 3 0
-        echo -ne "S: ${_keymap_name[2]:-Not Bound}"
-        safe_tput_cup 3 $((cols - 16))
-        echo -ne "D: ${_keymap_name[3]:-Not Bound}"
+            # Clamp selection to current page
+            local page_start=$((current_page * PAGE_SIZE))
+            local page_end=$((page_start + PAGE_SIZE - 1))
+            (( page_end >= total_items )) && page_end=$((total_items - 1))
+            (( selected_index < page_start )) && selected_index=$page_start
+            (( selected_index > page_end )) && selected_index=$page_start
 
-        # === MENU GRID BUILDING ===
-        local total_items=${#_options[@]}
-        local num_rows=$MAX_ROWS
-        local num_cols=$(( (total_items + MAX_ROWS - 1) / MAX_ROWS ))
+            cal-tui::clear_screen
 
-        # Calculate max visible width per item (to pad columns properly)
-        local max_width=0
-        for ((i = 0; i < total_items; i++)); do
-            local item_str
-            item_str="$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")"
-            local visible_stripped
-            visible_stripped=$(cal-tui::strip_ansi "$item_str")
-            (( ${#visible_stripped} > max_width )) && max_width=${#visible_stripped}
-        done
-        local col_padding=4
-        local col_width=$((max_width + col_padding))
+            cal-tui::print_widgets $((cols - 16))
+            # === Layout Computation ===
+            local max_width=0
+            for ((i = 0; i < total_items; i++)); do
+                local item
+                local selected=false
+                if ((i == selected_index)); then
+                    selected=true
+                fi
+                
+                item="$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}" "${selected}")"
+                local stripped
+                stripped=$(cal-tui::strip_ansi "$item")
+                (( ${#stripped} > max_width )) && max_width=${#stripped}
+            done
+            local col_padding=4
+            local col_width=$((max_width + col_padding))
+            local grid_width=$((col_width * MAX_COLS))
+            local start_col=$(( (cols - grid_width) / 2 ))
+            local grid_height=$((MAX_ROWS + 3))
+            local start_row=$(( (rows - grid_height) / 2 ))
+            (( start_col < 0 )) && start_col=0
+            (( start_row < 0 )) && start_row=0
 
-        # Compute top-left corner for centering
-        local total_grid_width=$((col_width * num_cols))
-        local start_col=$(( (cols - total_grid_width) / 2 ))
-        local total_grid_height=$((num_rows + 3)) # 3 for header lines
-        local start_row=$(( (rows - total_grid_height) / 2 ))
-        (( start_row < 0 )) && start_row=0
-        (( start_col < 0 )) && start_col=0
-
-        # === PRINT HEADER ===
-        safe_tput_cup "$start_row" $(( (cols - ${#title}) / 2 ))
-        cal-tui::print_header "$title"
-        safe_tput_cup $((start_row + 1)) 0
-        echo
-
-        # === PRINT MENU GRID ===
-        for ((r = 0; r < num_rows; r++)); do
-            safe_tput_cup $((start_row + 2 + r)) $start_col
-            for ((c = 0; c < num_cols; c++)); do
-                local i=$((c * num_rows + r))
-                if (( i >= total_items )); then
+            # === Header ===
+            safe_tput_cup "$start_row" $(( (cols - (${#title} + 6)) / 2 ))
+            if ((total_pages > 1)); then
+                cal-tui::print_header "$title $(cal-tui::get_icon COPY) ${CYAN}[Page $((current_page + 1)) of $total_pages]${RESET}"
+            else
+                cal-tui::print_header "$title"
+            fi
+            safe_tput_cup $((start_row + 1)) 0
+            echo
+            # === Print Menu Items ===
+            for ((r = 0; r < MAX_ROWS; r++)); do
+                safe_tput_cup $((start_row + 2 + r)) "$start_col"
+                local index=$((page_start + r))
+                if (( index > page_end )); then
+                    printf "%*s\n" "$col_width" ""
                     continue
                 fi
-                local item_str
-                if ((i < 9 && total_items > 9)); then
-                    item_str="$(cal-tui::print_menu_item "0$((i+1))" "${_icons[i]}" "${_options[i]}")"
-                else
-                    item_str="$(cal-tui::print_menu_item "$((i+1))" "${_icons[i]}" "${_options[i]}")"
+
+                local label_num=$((index + 1))
+
+                local item
+                local selected=false
+                if ((index == selected_index)); then
+                    selected=true
                 fi
-                # Calculate visible length to pad correctly
-                local visible_stripped
-                visible_stripped=$(cal-tui::strip_ansi "$item_str")
-                local pad_width=$((col_width - ${#visible_stripped}))
 
-                # Print the colored item string + spaces padding for alignment
-                printf "%s%*s" "$item_str" "$pad_width" ""
+                item="$(cal-tui::print_menu_item "$label_num" "${_icons[index]}" "${_options[index]}" "${selected}")"
+                local stripped
+                stripped=$(cal-tui::strip_ansi "$item")
+                local pad=$((col_width - ${#stripped}))
+                printf "%s%*s\n" "$item" "$pad" ""
             done
-        done
 
-        # === READ INPUT ===
-        safe_tput_cup $((start_row + 2 + num_rows + 1)) $(( (cols - 40) / 2 ))
-        echo -n "(1-${total_items} | w/a/s/d | ESC | BACKSPACE): "
-        IFS= read -rsn1 key
+            # === Footer ===
+           
+            local -a keynames=(${_keymap_name[@]})
+            cal-tui::print_help_menu keynames
+        fi
+        cols=$(tput cols)
+
+
+
+        # Move cursor to the last column of the current line
+        safe_tput_cup $(($(tput lines) - 1)) $((cols - 1))
+        # === Read Input ===
+        IFS= read -rsn1 key || key=""
+        if [[ "$key" == $'\e' ]]; then
+            IFS= read -rsn2 -t 0.1 rest || rest=""
+            key+="$rest"
+        fi
 
         case "$key" in
-            [0-9])
-                if (( key >= 1 && key <= total_items )); then
+            [1-9])
+                local idx=$(( (current_page * PAGE_SIZE) + key - 1 ))
+                if (( idx < total_items )); then
                     cal-tui::clear_screen
-                    local cmd="${_commands[$((key - 1))]}"
-                    cal-tui::proxy_run "$cmd" "$_callback"
+                    cal-tui::proxy_run "${_commands[$idx]}" "$_callback"
                     return
                 fi
+                ;;
+            h|$'\e[D') # Left
+                if (( current_page > 0 )); then
+                    ((current_page--))
+                    need_redraw=true
+                fi
+                ;;
+            l|$'\e[C') # Right
+                if (( current_page < total_pages - 1 )); then
+                    ((current_page++))
+                    need_redraw=true
+                fi
+                ;;                
+            j|$'\e[B') # Down
+                if (( selected_index < page_end )); then
+                    echo "selected_index=$selected_index, page_end=$page_end, total_items=$total_items" >&2
+                    ((selected_index=selected_index + 1))
+                    need_redraw=true
+                fi
+                ;;
+            k|$'\e[A') # Up
+                if (( selected_index > 0 )); then
+                    ((selected_index--))
+                    need_redraw=true
+                fi
+                ;;
+            $'\n'|$'\r'|$'\0') # Enter
+                cal-tui::clear_screen
+                cal-tui::proxy_run "${_commands[$selected_index]}" "$_callback"
+                return
                 ;;
             $'\e') # ESC
                 cal-tui::exit
                 ;;
-            $'\x7f')  # Backspace
+            $'\x7f') # Backspace
                 cal-tui::clear_screen
                 return
                 ;;
@@ -482,16 +608,12 @@ cal-tui::menu() {
                 esac
                 if [[ -n "${_keymap_cmds[$idx]}" ]]; then
                     cal-tui::clear_screen
-                    local cmd="${_keymap_cmds[$idx]}"
-                    cal-tui::proxy_run "$cmd" "$_callback"
+                    cal-tui::proxy_run "${_keymap_cmds[$idx]}" "$_callback"
                 fi
-                ;;
-            *)
-                cal-tui::print_error "Not a valid key"
-                continue
                 ;;
         esac
     done
+    tput cnorm
 }
 
 # cal-tui::menu() {
